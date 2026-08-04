@@ -76,6 +76,8 @@ const ICON_PATHS = {
   "circle-dashed": ["M12 3a9 9 0 1 0 9 9"],
   "sun": ["M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4 4.2 19.8M19.8 4.2l-1.4 1.4","M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"],
   "moon": ["M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"],
+  "target": ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z","M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z","M12 12.9a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z"],
+  "copy": ["M8 8h11v11H8z","M5 5h11v3H8v8H5z"],
 };
 
 function svgIcon(name, size){
@@ -123,6 +125,8 @@ const state = {
   dragging: null,
   edgesByTable: {},      // table -> [edgeIndex,...]
   edges: [],             // {from,to,fromCol,toCol,onDelete,onUpdate,type,path elements ref}
+  focusMode: false,       // Smart Focus Mode toggle
+  searchMatchIndex: -1,   // for Ctrl+G cycling through search matches
 };
 
 SCHEMA.modules.forEach(m => state.moduleEnabled[m] = true);
@@ -297,6 +301,11 @@ function renderAll(){
   svgEl.innerHTML = "";
   cardNodes = {}; groupNodes = {}; edgeNodes = [];
 
+  // defs: blur filter used for the relationship-hover glow underlay
+  const defs = el("defs", {}, svgEl);
+  const filter = el("filter", { id: "edgeGlow", x: "-60%", y: "-60%", width: "220%", height: "220%" }, defs);
+  el("feGaussianBlur", { stdDeviation: 3.2, result: "blur" }, filter);
+
   const layerGroups = el("g", { class: "layer-groups" }, svgEl);
   const layerEdges  = el("g", { class: "layer-edges" }, svgEl);
   const layerCards  = el("g", { class: "layer-cards" }, svgEl);
@@ -342,6 +351,7 @@ function renderAll(){
       if (!SCHEMA.tables[fk.ref_table]) return;
       const type = relType(name, fk);
       const color = relColor(type);
+      const glow    = el("path", { class: "rel-glow", stroke: color, filter: "url(#edgeGlow)" }, layerEdges);
       const pathBg = el("path", { class: "rel-path", stroke: color }, layerEdges);
       const flow   = el("path", { class: "rel-path rel-flow", stroke: color }, layerEdges);
       const labelBg = el("rect", { class: "rel-label-bg", rx: 5 }, layerEdges);
@@ -351,7 +361,7 @@ function renderAll(){
       const data = { from: name, to: fk.ref_table, fromCol: fk.column, toCol: fk.ref_column,
                      onDelete: fk.on_delete, onUpdate: fk.on_update, type, color };
       const idx = edgeNodes.length;
-      edgeNodes.push({ pathBg, flow, labelBg, labelText, data });
+      edgeNodes.push({ pathBg, flow, glow, labelBg, labelText, data });
 
       [pathBg, flow].forEach(p => {
         p.addEventListener("mouseenter", () => showEdgeTooltip(idx));
@@ -370,6 +380,7 @@ function renderAll(){
   applyFilters();
   updateStatsUI();
   renderMinimap();
+  if (state.focusMode && state.selected) applyFocusMode();
 }
 
 function anchorPoint(name, side){
@@ -405,6 +416,7 @@ function updateEdgePath(edgeIdx){
   const { d, mid } = edgePathData(e.data.from, e.data.to);
   e.pathBg.setAttribute("d", d);
   e.flow.setAttribute("d", d);
+  e.glow.setAttribute("d", d);
   const label = e.data.type;
   const w = label.length * 6.4 + 10;
   e.labelBg.setAttribute("x", mid.x - w/2);
@@ -469,6 +481,7 @@ function highlightRelated(name, on){
   (state.edgesByTable[name] || []).forEach(i => {
     edgeNodes[i].pathBg.classList.toggle("hover-active", on);
     edgeNodes[i].flow.classList.toggle("hover-active", on);
+    edgeNodes[i].glow.classList.toggle("hover-active", on);
   });
 }
 
@@ -551,18 +564,31 @@ function fitView(){
 
 /* ---- tooltip for edges ---- */
 let tooltipEl;
+function setEdgeEndpointHighlight(idx, on){
+  const d = edgeNodes[idx].data;
+  [d.from, d.to].forEach(n => {
+    const wrap = cardNodes[n];
+    if (!wrap) return;
+    const cardEl = wrap.fo.querySelector(".table-card");
+    if (!cardEl) return;
+    cardEl.classList.toggle("rel-endpoint", on);
+    if (on) cardEl.style.setProperty("--rel-glow-color", d.color);
+  });
+}
 function showEdgeTooltip(idx){
   const d = edgeNodes[idx].data;
   tooltipEl.innerHTML = `
     <div class="rt-title">${d.from} → ${d.to}</div>
     <div><b>FK column:</b> ${d.fromCol}</div>
-    <div><b>References:</b> ${d.to}.${d.refCol}</div>
+    <div><b>References:</b> ${d.to}.${d.toCol}</div>
     <div><b>Delete rule:</b> ${d.onDelete}</div>
     <div><b>Update rule:</b> ${d.onUpdate}</div>
     <div><b>Multiplicity:</b> ${d.type}</div>`;
   tooltipEl.classList.add("show");
   edgeNodes[idx].pathBg.classList.add("hover-active");
   edgeNodes[idx].flow.classList.add("hover-active");
+  edgeNodes[idx].glow.classList.add("hover-active");
+  setEdgeEndpointHighlight(idx, true);
   state.hoverEdge = idx;
 }
 function hideEdgeTooltip(){
@@ -570,6 +596,8 @@ function hideEdgeTooltip(){
   if (state.hoverEdge != null){
     edgeNodes[state.hoverEdge].pathBg.classList.remove("hover-active");
     edgeNodes[state.hoverEdge].flow.classList.remove("hover-active");
+    edgeNodes[state.hoverEdge].glow.classList.remove("hover-active");
+    setEdgeEndpointHighlight(state.hoverEdge, false);
   }
   state.hoverEdge = null;
 }
@@ -578,6 +606,48 @@ function moveTooltip(e){
   tooltipEl.style.left = (e.clientX - rect.left + 16) + "px";
   tooltipEl.style.top = (e.clientY - rect.top + 12) + "px";
 }
+
+/* ============================================================
+   SMART FOCUS MODE
+   ============================================================ */
+function applyFocusMode(){
+  if (!state.selected){ clearFocusMode(); return; }
+  const name = state.selected;
+  const related = new Set([name]);
+  SCHEMA.tables[name].fks.forEach(fk => related.add(fk.ref_table));
+  incomingRefs[name].forEach(r => related.add(r.from));
+
+  Object.keys(cardNodes).forEach(n => {
+    const cardEl = cardNodes[n].fo.querySelector(".table-card");
+    if (cardEl) cardEl.classList.toggle("focus-dim", !related.has(n));
+  });
+  edgeNodes.forEach(e => {
+    const relevant = e.data.from === name || e.data.to === name;
+    e.pathBg.classList.toggle("focus-dim", !relevant);
+    e.flow.classList.toggle("focus-dim", !relevant);
+    e.pathBg.classList.toggle("focus-active", relevant);
+    e.flow.classList.toggle("focus-active", relevant);
+  });
+}
+function clearFocusMode(){
+  Object.values(cardNodes).forEach(c => {
+    const cardEl = c.fo.querySelector(".table-card");
+    if (cardEl) cardEl.classList.remove("focus-dim");
+  });
+  edgeNodes.forEach(e => {
+    e.pathBg.classList.remove("focus-dim", "focus-active");
+    e.flow.classList.remove("focus-dim", "focus-active");
+  });
+}
+function toggleFocusMode(force){
+  state.focusMode = (typeof force === "boolean") ? force : !state.focusMode;
+  const btn = document.getElementById("btnFocusMode");
+  if (btn) btn.classList.toggle("active", state.focusMode);
+  if (state.focusMode && state.selected) applyFocusMode();
+  else clearFocusMode();
+  toast(state.focusMode ? "Focus mode on — select a table to isolate its relations" : "Focus mode off");
+}
+document.getElementById("btnFocusMode").onclick = () => toggleFocusMode();
 
 /* ============================================================
    SEARCH + FILTERS
@@ -662,8 +732,21 @@ function centerOnTable(name){
   applyTransform();
 }
 
+function cycleSearchMatch(){
+  const q = state.search.trim().toLowerCase();
+  const input = document.getElementById("searchInput");
+  if (!q){ input.focus(); input.select(); return; }
+  const matches = SCHEMA.order.filter(n => tableMatchesSearch(n, q) && cardNodes[n] && cardNodes[n].g.style.display !== "none");
+  if (!matches.length) return;
+  state.searchMatchIndex = (state.searchMatchIndex + 1) % matches.length;
+  const target = matches[state.searchMatchIndex];
+  centerOnTable(target);
+  openDetails(target);
+}
+
 document.getElementById("searchInput").addEventListener("input", (e) => {
   state.search = e.target.value;
+  state.searchMatchIndex = -1;
   applyFilters();
 });
 
@@ -889,15 +972,54 @@ function openDetails(name){
   });
 
   // sql tab
-  document.getElementById("tab-sql").innerHTML = `<pre class="sql-block">${highlightSQL(buildCreateTableSQL(name))}</pre>`;
+  const createSql = buildCreateTableSQL(name);
+  document.getElementById("tab-sql").innerHTML = `
+    <div class="sql-toolbar">
+      <span class="sql-toolbar-label">CREATE TABLE definition</span>
+      <button class="btn ghost sql-copy-btn" id="btnCopySql">${svgIcon("copy",12)} Copy SQL</button>
+    </div>
+    <pre class="sql-block">${highlightSQL(createSql)}</pre>
+    <div class="dp-field" style="margin-top:18px;">
+      <div class="lbl">Constraints &amp; indexes</div>
+      ${buildConstraintsSummary(name)}
+    </div>
+    <div class="dp-field">
+      <div class="lbl">Views · Triggers · Procedures</div>
+      <div class="val" style="color:var(--text-2);font-size:12px;">Not present in this schema.</div>
+    </div>
+  `;
+  document.getElementById("btnCopySql").onclick = () => {
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(createSql).then(
+        () => toast("SQL copied to clipboard"),
+        () => toast("Copy failed — select the text manually")
+      );
+    } else {
+      toast("Clipboard unavailable — select the text manually");
+    }
+  };
+
+  if (state.focusMode) applyFocusMode();
 
   detailsPanel.classList.add("open");
+}
+
+function buildConstraintsSummary(name){
+  const t = SCHEMA.tables[name];
+  let html = "";
+  if (t.pk.length) html += `<div class="dp-rel-item" style="cursor:default;"><b>PRIMARY KEY</b><span class="rule">${t.pk.join(", ")}</span></div>`;
+  t.uniques.forEach(u => { html += `<div class="dp-rel-item" style="cursor:default;"><b>UNIQUE</b><span class="rule">${u.join(", ")}</span></div>`; });
+  t.indexes.forEach(ix => { html += `<div class="dp-rel-item" style="cursor:default;"><b>${ix.fulltext ? "FULLTEXT " : ""}INDEX</b><span class="rule">${ix.cols.join(", ")}</span></div>`; });
+  t.fks.forEach(fk => { html += `<div class="dp-rel-item" style="cursor:default;"><b>FOREIGN KEY</b><span class="rule">${fk.column} → ${fk.ref_table}.${fk.ref_column}</span></div>`; });
+  if (!html) html = `<div class="val" style="color:var(--text-2);font-size:12px;">No constraints defined</div>`;
+  return html;
 }
 
 document.getElementById("detailsClose").onclick = () => {
   detailsPanel.classList.remove("open");
   state.selected = null;
   Object.values(cardNodes).forEach(c => c.fo.querySelector(".table-card").classList.remove("selected"));
+  clearFocusMode();
 };
 
 document.querySelectorAll(".details-tabs .tab").forEach(tab => {
@@ -1120,6 +1242,7 @@ function refreshThemedUI(){
     document.getElementById("detailsModule").style.setProperty("--mod-color", modColor(mod));
     detailsPanel.style.setProperty("--mod-color", modColor(mod));
   }
+  if (state.focusMode && state.selected) applyFocusMode();
   applyTransform();
 }
 
@@ -1148,6 +1271,21 @@ if (window.matchMedia){
 }
 
 document.getElementById("btnFitView").onclick = fitView;
+
+/* ============================================================
+   KEYBOARD SHORTCUTS
+   ============================================================ */
+document.addEventListener("keydown", (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (!mod) return;
+  const k = e.key.toLowerCase();
+  if (k === "f" && e.shiftKey){ e.preventDefault(); toggleFocusMode(); return; }
+  if (k === "f"){ e.preventDefault(); const si = document.getElementById("searchInput"); si.focus(); si.select(); return; }
+  if (k === "g"){ e.preventDefault(); cycleSearchMatch(); return; }
+  if (k === "l"){ e.preventDefault(); document.getElementById("btnAutoLayout").click(); return; }
+  if (k === "e"){ e.preventDefault(); document.getElementById("exportMenu").classList.toggle("open"); return; }
+  if (k === "d"){ e.preventDefault(); setTheme(isLightTheme() ? "dark" : "light"); return; }
+});
 document.getElementById("btnAutoLayout").onclick = () => {
   computeLayout();
   SCHEMA.order.forEach(name => {
@@ -1174,6 +1312,7 @@ document.getElementById("btnAutoLayout").onclick = () => {
    ============================================================ */
 function init(){
   applyThemeIcon();
+  document.getElementById("focusIcon").innerHTML = svgIcon("target", 15);
   svgEl = document.getElementById("canvasSvg");
   viewportEl = document.getElementById("canvasViewport");
   tooltipEl = document.createElement("div");
