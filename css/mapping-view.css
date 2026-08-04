@@ -1,0 +1,56 @@
+/* ============ MAPPING VIEW ============ */
+.map-node{
+  position:relative;
+  border-radius:18px;
+  background: linear-gradient(180deg, rgba(26,29,44,0.9), rgba(16,18,28,0.92));
+  border:1.5px solid var(--mod-color, var(--panel-border-strong));
+  box-shadow: 0 16px 40px -18px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03);
+  overflow:hidden;
+  cursor:pointer;
+  user-select:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center;
+  padding:14px 10px;
+  gap:6px;
+  animation: cardIn .4s cubic-bezier(.2,.8,.2,1) both;
+  transition: transform .18s, box-shadow .18s, opacity .25s;
+}
+html[data-theme="light"] .map-node{
+  background: linear-gradient(180deg, #ffffff, #f8f9fc);
+  box-shadow: 0 12px 28px -16px rgba(15,23,42,0.28);
+}
+.map-node:hover{ transform: translateY(-3px); box-shadow: 0 22px 50px -16px rgba(0,0,0,0.75), 0 0 0 2px var(--mod-color); }
+.map-node.dragging{ transition:none; cursor:grabbing; }
+.map-node .mn-icon{
+  width:34px; height:34px; border-radius:10px;
+  background: var(--mod-color-soft, rgba(124,157,255,0.16));
+  color: var(--mod-color, var(--accent));
+  display:flex; align-items:center; justify-content:center;
+}
+.map-node .mn-icon svg{ width:17px; height:17px; }
+.map-node .mn-name{ font-family:var(--font-display); font-weight:700; font-size:14px; color:var(--text-0); }
+.map-node .mn-sub{ font-size:10.5px; color:var(--text-2); }
+
+.map-edge{
+  fill:none; stroke-width:2; opacity:.7;
+  transition: opacity .15s, stroke-width .15s;
+}
+.map-edge:hover, .map-edge.hover-active{ opacity:1; stroke-width:3; }
+.map-edge-glow{
+  fill:none; stroke-width:6; opacity:0; pointer-events:none;
+  transition:opacity .2s;
+}
+.map-edge-glow.hover-active{
+  opacity:.5;
+  animation: edgePulse 1.1s ease-in-out infinite;
+}
+.map-edge-flow{
+  fill:none; stroke-width:2; stroke-dasharray:1 8; stroke-linecap:round;
+  opacity:.9; animation: flow 1.1s linear infinite;
+}
+.map-edge-flow.hover-active{ animation-duration:.5s; }
+.map-edge-label{
+  font-size:10px; font-weight:600;
+}
+.map-edge-label-bg{ fill:var(--rel-label-bg); stroke:var(--rel-label-stroke); }
+

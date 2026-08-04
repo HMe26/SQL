@@ -1,0 +1,39 @@
+/* ============================================================
+   UIP Database Atlas — dark glassmorphism ERD explorer
+   ============================================================ */
+
+@import url('https://fonts.cdnfonts.com/css/jetbrains-mono-2');
+
+:root{
+  --bg-0:#07080d;
+  --bg-1:#0c0f18;
+  --bg-2:#12162200;
+  --panel: rgba(20,23,35,0.62);
+  --panel-solid:#12141d;
+  --panel-border: rgba(255,255,255,0.08);
+  --panel-border-strong: rgba(255,255,255,0.16);
+  --text-0:#f3f5fb;
+  --text-1:#aab0c6;
+  --text-2:#6b7189;
+  --accent:#7c9dff;
+  --accent-2:#8ffcd6;
+  --danger:#ff5d7a;
+  --radius-lg:18px;
+  --radius-md:12px;
+  --radius-sm:8px;
+  --shadow-glow: 0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px -20px rgba(0,0,0,0.7);
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* theme-sensitive accents (overridden under [data-theme="light"]) */
+  --pk-color:#ffd76a;
+  --fk-color:#7fd0ff;
+  --grid-line: rgba(255,255,255,0.028);
+  --mm-viewport-fill: rgba(255,255,255,0.08);
+  --mm-viewport-stroke: #ffffff;
+  --rel-label-bg:#0c0e17;
+  --rel-label-stroke: rgba(255,255,255,0.12);
+  --theme-transition: background-color .35s ease, border-color .35s ease, color .35s ease, box-shadow .35s ease, fill .35s ease, stroke .35s ease;
+}
+

@@ -1,243 +1,278 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>UIP — Database Atlas</title>
-    <link rel="shortcut icon" href="logo.png" type="image/x-icon" />
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div id="app">
-      <!-- ============ TOP BAR ============ -->
-      <header id="topbar">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="22" height="22">
-              <circle cx="16" cy="8" r="4.2" />
-              <circle cx="7" cy="23" r="4.2" />
-              <circle cx="25" cy="23" r="4.2" />
-              <path
-                d="M16 12.2 L9 19.4 M16 12.2 L23 19.4"
-                stroke-width="1.6"
-                fill="none"
-              />
-            </svg>
-          </div>
-          <div class="brand-text">
-            <span class="brand-title">UIP Database Atlas</span>
-            <span class="brand-sub"
-              >University Innovation Platform · schema map</span
-            >
-          </div>
-        </div>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UIP — Database Atlas</title>
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/theme-light.css" />
+<link rel="stylesheet" href="css/topbar.css" />
+<link rel="stylesheet" href="css/sidebar.css" />
+<link rel="stylesheet" href="css/canvas.css" />
+<link rel="stylesheet" href="css/floating-panels.css" />
+<link rel="stylesheet" href="css/details-panel.css" />
+<link rel="stylesheet" href="css/module-navigator.css" />
+<link rel="stylesheet" href="css/mapping-view.css" />
+<link rel="stylesheet" href="css/responsive-a11y-misc.css" />
+<link rel="stylesheet" href="css/context-menu.css" />
+<link rel="stylesheet" href="css/command-palette.css" />
+</head>
+<body>
 
-        <div class="search-wrap">
-          <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
-          <input
-            id="searchInput"
-            type="text"
-            placeholder="Search tables, columns, modules… (Ctrl+F)"
-            autocomplete="off"
-          />
-          <span id="searchCount" class="search-count"></span>
-        </div>
+<div id="app">
 
-        <div class="topbar-actions">
-          <button
-            class="btn ghost"
-            id="btnAutoLayout"
-            title="Re-run auto layout (Ctrl+L)"
-          >
-            <svg viewBox="0 0 24 24" width="15" height="15">
-              <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
-            </svg>
-            Auto Layout
-          </button>
-          <button class="btn ghost" id="btnFitView" title="Fit to screen">
-            <svg viewBox="0 0 24 24" width="15" height="15">
-              <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-            </svg>
-            Fit
-          </button>
-          <button
-            class="btn ghost icon-only"
-            id="btnThemeToggle"
-            title="Toggle light / dark theme (Ctrl+D)"
-          >
-            <span id="themeIcon"></span>
-          </button>
-          <button
-            class="btn ghost icon-only"
-            id="btnFocusMode"
-            title="Smart Focus Mode — isolate a table's relations (Ctrl+Shift+F)"
-          >
-            <span id="focusIcon"></span>
-          </button>
-          <div class="export-group">
-            <button
-              class="btn primary"
-              id="btnExportMenu"
-              title="Export (Ctrl+E)"
-            >
-              <svg viewBox="0 0 24 24" width="15" height="15">
-                <path d="M12 3v13m0 0l-4-4m4 4l4-4M4 21h16" />
-              </svg>
-              Export
-            </button>
-            <div class="export-menu" id="exportMenu">
-              <button data-export="png">Export as PNG</button>
-              <button data-export="svg">Export as SVG</button>
-              <button data-export="pdf">Export as PDF</button>
-              <button data-export="print">Print diagram</button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <!-- ============ LEFT SIDEBAR ============ -->
-      <aside id="sidebar">
-        <div class="sidebar-section">
-          <h3>Overview</h3>
-          <div class="stat-grid" id="statGrid"></div>
-        </div>
-
-        <div class="sidebar-section">
-          <h3>Filter by module</h3>
-          <div class="module-filters" id="moduleFilters"></div>
-        </div>
-
-        <div class="sidebar-section">
-          <h3>Quick filters</h3>
-          <div class="quick-filters" id="quickFilters">
-            <button class="chip" data-quick="pk">Has PK</button>
-            <button class="chip" data-quick="fk">Has FK</button>
-            <button class="chip" data-quick="empty">Hide isolated</button>
-            <button class="chip" data-quick="reset">Reset filters</button>
-          </div>
-        </div>
-
-        <div class="sidebar-section grow">
-          <h3>Table index <span id="tableIndexCount" class="muted"></span></h3>
-          <div class="table-index" id="tableIndex"></div>
-        </div>
-      </aside>
-
-      <!-- ============ CANVAS ============ -->
-      <main id="canvasWrap">
-        <div id="canvasViewport">
-          <svg id="canvasSvg" xmlns="http://www.w3.org/2000/svg"></svg>
-        </div>
-
-        <!-- floating legend -->
-        <div id="legend" class="floating-panel">
-          <div class="floating-header">
-            <span>Legend</span>
-            <button class="icon-btn" id="legendToggle">–</button>
-          </div>
-          <div class="legend-body" id="legendBody"></div>
-        </div>
-
-        <!-- minimap -->
-        <div id="minimap" class="floating-panel">
-          <div class="floating-header">
-            <span>Minimap</span>
-          </div>
-          <svg id="minimapSvg" viewBox="0 0 220 150"></svg>
-        </div>
-
-        <!-- zoom controls -->
-        <div id="zoomControls">
-          <button id="zoomIn" title="Zoom in">+</button>
-          <span id="zoomLevel">100%</span>
-          <button id="zoomOut" title="Zoom out">–</button>
-        </div>
-
-        <div id="canvasHint" class="canvas-hint">
-          Scroll to zoom · Drag to pan · Click a table for details
-        </div>
-      </main>
-
-      <!-- ============ DETAILS PANEL ============ -->
-      <aside id="detailsPanel">
-        <div class="details-header">
-          <div>
-            <div class="details-module" id="detailsModule"></div>
-            <h2 id="detailsTitle">—</h2>
-          </div>
-          <button class="icon-btn" id="detailsClose">✕</button>
-        </div>
-
-        <div class="details-tabs">
-          <button class="tab active" data-tab="overview">Overview</button>
-          <button class="tab" data-tab="columns">Columns</button>
-          <button class="tab" data-tab="relations">Relations</button>
-          <button class="tab" data-tab="sql">SQL</button>
-        </div>
-
-        <div class="details-body">
-          <div class="tab-panel active" id="tab-overview"></div>
-          <div class="tab-panel" id="tab-columns"></div>
-          <div class="tab-panel" id="tab-relations"></div>
-          <div class="tab-panel" id="tab-sql"></div>
-        </div>
-      </aside>
+  <!-- ============ TOP BAR ============ -->
+  <header id="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="22" height="22">
+          <circle cx="16" cy="8" r="4.2"/>
+          <circle cx="7" cy="23" r="4.2"/>
+          <circle cx="25" cy="23" r="4.2"/>
+          <path d="M16 12.2 L9 19.4 M16 12.2 L23 19.4" stroke-width="1.6" fill="none"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">UIP Database Atlas</span>
+        <span class="brand-sub">University Innovation Platform · schema map</span>
+      </div>
     </div>
 
-    <div id="toast"></div>
-    <script>
-      // Disable Right Click
-      document.addEventListener("contextmenu", (e) => e.preventDefault());
+    <div class="view-tabs">
+      <button class="view-tab active" id="tabViewErd" data-view="erd">ERD</button>
+      <button class="view-tab" id="tabViewMapping" data-view="mapping" title="Database Mapping — module architecture view (Ctrl+M)">Mapping</button>
+    </div>
 
-      // Disable Keyboard Shortcuts
-      document.addEventListener("keydown", function (e) {
-        // F12
-        if (e.key === "F12") {
-          e.preventDefault();
-          return false;
-        }
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="Search tables, columns, modules… (Ctrl+F)" autocomplete="off" />
+      <span id="searchCount" class="search-count"></span>
+    </div>
 
-        // Ctrl+Shift+I
-        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") {
-          e.preventDefault();
-          return false;
-        }
+    <div class="topbar-actions">
+      <button class="btn ghost" id="btnCommandPalette" title="Command palette (Ctrl+K)">
+        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 17l6-6-6-6M12 19h8"/></svg>
+        <span class="kbd-hint">Ctrl K</span>
+      </button>
+      <button class="btn ghost" id="btnAutoLayout" title="Re-run auto layout (Ctrl+L)">
+        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+        Auto Layout
+      </button>
+      <div class="routing-switch" id="routingSwitch" title="Relationship line routing style">
+        <button data-routing="curved" title="Curved routing">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M3 19c4 0 4-14 9-14s5 14 9 14" fill="none"/></svg>
+        </button>
+        <button data-routing="orthogonal" title="Orthogonal routing">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M3 19h7V5h11" fill="none"/></svg>
+        </button>
+        <button data-routing="straight" title="Straight routing">
+          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M3 19 21 5" fill="none"/></svg>
+        </button>
+      </div>
+      <button class="btn ghost" id="btnFitView" title="Fit to screen">
+        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        Fit
+      </button>
+      <button class="btn ghost icon-only" id="btnThemeToggle" title="Toggle light / dark theme (Ctrl+D)" aria-label="Toggle light or dark theme">
+        <span id="themeIcon"></span>
+      </button>
+      <button class="btn ghost icon-only" id="btnFocusMode" title="Smart Focus Mode — isolate a table's relations (Ctrl+Shift+F)" aria-label="Toggle smart focus mode">
+        <span id="focusIcon"></span>
+      </button>
+      <div class="export-group">
+        <button class="btn primary" id="btnExportMenu" title="Export (Ctrl+E)">
+          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 3v13m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+          Export
+        </button>
+        <div class="export-menu" id="exportMenu">
+          <button data-export="png">Export as PNG</button>
+          <button data-export="svg">Export as SVG</button>
+          <button data-export="pdf">Export as PDF</button>
+          <button data-export="print">Print diagram</button>
+          <div class="export-menu-sep"></div>
+          <button data-export="json">Export as JSON</button>
+          <button data-export="mermaid">Export as Mermaid (.mmd)</button>
+          <button data-export="plantuml">Export as PlantUML (.puml)</button>
+          <button data-export="drawio">Export as Draw.io (.drawio)</button>
+        </div>
+      </div>
+    </div>
+  </header>
 
-        // Ctrl+Shift+J
-        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") {
-          e.preventDefault();
-          return false;
-        }
+  <!-- ============ LEFT SIDEBAR ============ -->
+  <aside id="sidebar">
+    <div class="sidebar-section">
+      <h3>Overview</h3>
+      <div class="stat-grid" id="statGrid"></div>
+    </div>
 
-        // Ctrl+Shift+C
-        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
-          e.preventDefault();
-          return false;
-        }
+    <div class="sidebar-section">
+      <h3>Filter by module</h3>
+      <div class="module-filters" id="moduleFilters"></div>
+    </div>
 
-        // Ctrl+U
-        if (e.ctrlKey && e.key.toLowerCase() === "u") {
-          e.preventDefault();
-          return false;
-        }
+    <div class="sidebar-section">
+      <h3>Quick filters</h3>
+      <div class="quick-filters" id="quickFilters">
+        <button class="chip" data-quick="pk">Has PK</button>
+        <button class="chip" data-quick="fk">Has FK</button>
+        <button class="chip" data-quick="hideIsolated">Hide isolated</button>
+        <button class="chip" data-quick="reset">Reset filters</button>
+      </div>
+      <select id="datatypeFilter" class="datatype-select"></select>
+    </div>
 
-        // Ctrl+S
-        if (e.ctrlKey && e.key.toLowerCase() === "s") {
-          e.preventDefault();
-          return false;
-        }
+    <div class="sidebar-section grow">
+      <h3>Table index <span id="tableIndexCount" class="muted"></span></h3>
+      <div class="table-index" id="tableIndex"></div>
+    </div>
+  </aside>
 
-        // Ctrl+P
-        if (e.ctrlKey && e.key.toLowerCase() === "p") {
-          e.preventDefault();
-          return false;
-        }
-      });
-    </script>
-    <script src="schema-data.js"></script>
-    <script src="script.js"></script>
-  </body>
+  <!-- ============ BREADCRUMBS ============ -->
+  <div id="breadcrumbBar" class="breadcrumb-bar">
+    <button class="crumb" data-crumb="root">Atlas</button>
+  </div>
+
+  <!-- ============ CANVAS ============ -->
+  <main id="canvasWrap">
+    <div id="canvasViewport">
+      <svg id="canvasSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <!-- floating legend -->
+    <div id="legend" class="floating-panel">
+      <div class="floating-header">
+        <span>Legend</span>
+        <button class="icon-btn" id="legendToggle" aria-label="Collapse or expand legend">–</button>
+      </div>
+      <div class="legend-body" id="legendBody"></div>
+    </div>
+
+    <!-- minimap -->
+    <div id="minimap" class="floating-panel resizable-panel">
+      <div class="floating-header" id="minimapDragHandle">
+        <span>Minimap</span>
+        <span class="mm-zoom-badge" id="minimapZoomBadge">100%</span>
+        <button class="icon-btn" id="minimapFitBtn" title="Fit to screen" aria-label="Fit minimap to screen">⤢</button>
+      </div>
+      <svg id="minimapSvg" viewBox="0 0 220 150"></svg>
+      <div class="panel-resize-handle" id="minimapResizeHandle"></div>
+    </div>
+
+    <!-- zoom controls -->
+    <div id="zoomControls">
+      <button id="zoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+      <span id="zoomLevel">100%</span>
+      <button id="zoomOut" title="Zoom out" aria-label="Zoom out">–</button>
+    </div>
+
+    <div id="canvasHint" class="canvas-hint">Scroll to zoom · Drag to pan · Click a table for details</div>
+
+    <!-- loading skeleton -->
+    <div id="loadingSkeleton" class="loading-skeleton">
+      <div class="skel-card"><div class="skel-line w60"></div><div class="skel-line w40"></div><div class="skel-line w80"></div><div class="skel-line w50"></div></div>
+      <div class="skel-card"><div class="skel-line w60"></div><div class="skel-line w40"></div><div class="skel-line w80"></div><div class="skel-line w50"></div></div>
+      <div class="skel-card"><div class="skel-line w60"></div><div class="skel-line w40"></div><div class="skel-line w80"></div><div class="skel-line w50"></div></div>
+    </div>
+  </main>
+
+  <!-- ============ MAPPING VIEW (module architecture map) ============ -->
+  <main id="mappingWrap" style="display:none;">
+    <div id="mapViewport">
+      <svg id="mapSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div id="mapMinimap" class="floating-panel resizable-panel">
+      <div class="floating-header" id="mapMinimapDragHandle">
+        <span>Minimap</span>
+        <span class="mm-zoom-badge" id="mapMinimapZoomBadge">100%</span>
+        <button class="icon-btn" id="mapMinimapFitBtn" title="Fit to screen" aria-label="Fit minimap to screen">⤢</button>
+      </div>
+      <svg id="mapMinimapSvg" viewBox="0 0 220 150"></svg>
+      <div class="panel-resize-handle" id="mapMinimapResizeHandle"></div>
+    </div>
+
+    <div id="mapZoomControls">
+      <button id="mapZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+      <span id="mapZoomLevel">100%</span>
+      <button id="mapZoomOut" title="Zoom out" aria-label="Zoom out">–</button>
+    </div>
+
+    <div class="canvas-hint">Scroll to zoom · Drag to pan · Drag a node to reposition · Click a module to jump to it in the ERD</div>
+  </main>
+
+  <!-- ============ DETAILS PANEL ============ -->
+  <aside id="detailsPanel">
+    <div class="details-header">
+      <div>
+        <div class="details-module" id="detailsModule"></div>
+        <h2 id="detailsTitle">—</h2>
+      </div>
+      <button class="icon-btn" id="detailsClose" aria-label="Close table details">✕</button>
+    </div>
+
+    <div class="details-tabs">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="columns">Columns</button>
+      <button class="tab" data-tab="relations">Relations</button>
+      <button class="tab" data-tab="sql">SQL</button>
+    </div>
+
+    <div class="details-body">
+      <div class="tab-panel active" id="tab-overview"></div>
+      <div class="tab-panel" id="tab-columns"></div>
+      <div class="tab-panel" id="tab-relations"></div>
+      <div class="tab-panel" id="tab-sql"></div>
+    </div>
+  </aside>
+
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ============ CONTEXT MENU ============ -->
+<div id="contextMenu" class="context-menu"></div>
+
+<!-- ============ COMMAND PALETTE ============ -->
+<div id="commandPalette" class="command-palette-overlay">
+  <div class="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="cp-search">
+      <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="cpInput" type="text" placeholder="Search tables, modules, or actions…" autocomplete="off" />
+      <span class="cp-esc">Esc</span>
+    </div>
+    <div id="cpResults" class="cp-results"></div>
+  </div>
+</div>
+
+<!-- ===== Data: schema metadata, then tables grouped by module ===== -->
+<script src="js/data/schema-meta.js"></script>
+<script src="js/data/tables/auth.js"></script>
+<script src="js/data/tables/people.js"></script>
+<script src="js/data/tables/projects.js"></script>
+<script src="js/data/tables/ai-engine.js"></script>
+<script src="js/data/tables/messaging.js"></script>
+<script src="js/data/tables/analytics.js"></script>
+<script src="js/data/tables/security.js"></script>
+<script src="js/data/tables/settings.js"></script>
+
+<!-- ===== App logic: same order as the original script.js, just split into files ===== -->
+<script src="js/core/state-and-helpers.js"></script>
+<script src="js/core/layout.js"></script>
+<script src="js/render/erd-render.js"></script>
+<script src="js/render/erd-interactions.js"></script>
+<script src="js/features/focus-mode.js"></script>
+<script src="js/features/sidebar-search-stats.js"></script>
+<script src="js/render/minimap.js"></script>
+<script src="js/render/mapping-view.js"></script>
+<script src="js/features/details-panel.js"></script>
+<script src="js/features/legend.js"></script>
+<script src="js/features/export.js"></script>
+<script src="js/core/theme.js"></script>
+<script src="js/ui/context-menu.js"></script>
+<script src="js/ui/command-palette.js"></script>
+<script src="js/ui/keyboard-shortcuts.js"></script>
+<script src="js/ui/panels-resize.js"></script>
+<script src="js/main.js"></script>
+</body>
 </html>

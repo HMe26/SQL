@@ -1,0 +1,70 @@
+/* ============ FLOATING PANELS (legend / minimap) ============ */
+.floating-panel{
+  position:absolute;
+  background:var(--panel);
+  backdrop-filter:blur(20px);
+  border:1px solid var(--panel-border);
+  border-radius:14px;
+  box-shadow:var(--shadow-glow);
+  z-index:40;
+  overflow:hidden;
+}
+.floating-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 12px; font-size:11px; font-weight:600;
+  color:var(--text-1); text-transform:uppercase; letter-spacing:0.6px;
+  border-bottom:1px solid var(--panel-border);
+}
+.icon-btn{
+  background:rgba(255,255,255,0.05); border:1px solid var(--panel-border);
+  color:var(--text-1); width:22px; height:22px; border-radius:7px;
+  cursor:pointer; font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;
+}
+.icon-btn:hover{ background:rgba(255,255,255,0.1); color:var(--text-0); }
+
+#legend{ left:16px; bottom:16px; width:230px; }
+.legend-body{ padding:10px 12px; display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; }
+.legend-row{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-1); }
+.legend-row .ico{ width:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.legend-row .ico svg{ width:13px; height:13px; }
+.legend-swatch{ width:11px; height:11px; border-radius:4px; flex-shrink:0; }
+.legend-line{ width:20px; height:0; border-top:2px solid; flex-shrink:0; }
+
+#minimap, #mapMinimap{ right:16px; bottom:16px; width:236px; height:166px; display:flex; flex-direction:column; }
+#minimapSvg, #mapMinimapSvg{ width:100%; flex:1; display:block; min-height:0; }
+.mm-node{ fill-opacity:0.9; }
+.mm-viewport{ fill:var(--mm-viewport-fill); stroke:var(--mm-viewport-stroke); stroke-width:1; }
+
+.resizable-panel{ min-width:170px; min-height:120px; max-width:520px; max-height:70vh; }
+.resizable-panel .floating-header{ cursor:move; user-select:none; }
+.resizable-panel.dragging, .resizable-panel.resizing{ transition:none !important; opacity:0.94; }
+.mm-zoom-badge{
+  font-size:9.5px; font-weight:600; letter-spacing:0; text-transform:none;
+  background:rgba(124,157,255,0.16); color:var(--text-1); border-radius:6px;
+  padding:2px 6px; margin-left:auto; margin-right:6px; flex-shrink:0;
+}
+.floating-header #minimapFitBtn, .floating-header #mapMinimapFitBtn{ font-size:12px; flex-shrink:0; }
+.panel-resize-handle{
+  position:absolute; right:1px; bottom:1px; width:16px; height:16px;
+  cursor:nwse-resize; z-index:5;
+}
+.panel-resize-handle::after{
+  content:""; position:absolute; right:4px; bottom:4px; width:7px; height:7px;
+  border-right:2px solid var(--text-2); border-bottom:2px solid var(--text-2); opacity:.45;
+}
+.panel-resize-handle:hover::after{ opacity:.85; }
+
+#zoomControls, #mapZoomControls{
+  position:absolute; right:16px; top:16px;
+  background:var(--panel); backdrop-filter:blur(20px);
+  border:1px solid var(--panel-border); border-radius:12px;
+  display:flex; flex-direction:column; align-items:center;
+  z-index:40; overflow:hidden; box-shadow:var(--shadow-glow);
+}
+#zoomControls button, #mapZoomControls button{
+  width:34px; height:34px; background:none; border:none; color:var(--text-0);
+  font-size:16px; cursor:pointer;
+}
+#zoomControls button:hover, #mapZoomControls button:hover{ background:rgba(255,255,255,0.08); }
+#zoomLevel, #mapZoomLevel{ font-size:9.5px; color:var(--text-2); padding:3px 0; border-top:1px solid var(--panel-border); border-bottom:1px solid var(--panel-border); width:100%; text-align:center; }
+
