@@ -11,6 +11,8 @@
   transition: background-color .35s ease;
 }
 #canvasWrap.panning, #mappingWrap.panning{ cursor:grabbing; }
+#canvasWrap.snap-grid-active{ --grid-line: rgba(124,157,255,0.3); }
+html[data-theme="light"] #canvasWrap.snap-grid-active{ --grid-line: rgba(59,99,240,0.28); }
 #canvasViewport, #mapViewport{
   position:absolute; top:0; left:0;
   width:100%; height:100%;

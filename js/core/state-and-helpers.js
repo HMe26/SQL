@@ -81,6 +81,9 @@ const ICON_PATHS = {
   "layers": ["M12 3 3 8l9 5 9-5-9-5Z","M3 13l9 5 9-5","M3 18l9 5 9-5"],
   "chevron-down": ["M5 8.5 12 15.5 19 8.5"],
   "chevron-up": ["M5 15.5 12 8.5 19 15.5"],
+  "maximize": ["M8 3H5a2 2 0 0 0-2 2v3","M16 3h3a2 2 0 0 1 2 2v3","M8 21H5a2 2 0 0 1-2-2v-3","M16 21h3a2 2 0 0 0 2-2v-3"],
+  "minimize": ["M9 3v4a2 2 0 0 1-2 2H3","M15 3v4a2 2 0 0 0 2 2h4","M9 21v-4a2 2 0 0 0-2-2H3","M15 21v-4a2 2 0 0 1 2-2h4"],
+  "grid-snap": ["M4 4h4v4H4z","M10 4h4v4h-4z","M16 4h4v4h-4z","M4 10h4v4H4z","M10 10h4v4h-4z","M16 10h4v4h-4z","M4 16h4v4H4z","M10 16h4v4h-4z","M16 16h4v4h-4z"],
 };
 
 function svgIcon(name, size){
@@ -138,8 +141,20 @@ const state = {
   mapPanY: 60,
   mapInitialized: false,
   edgeRouting: (localStorage.getItem("edgeRouting") || "curved"), // "curved" | "straight" | "orthogonal"
+  layoutMode: (localStorage.getItem("layoutMode") || "grid"), // "grid" | "organic" (force-directed)
   expanded: {},           // table name -> bool (accordion expand/collapse of full column list)
+  snapToGrid: (localStorage.getItem("snapToGrid") === "1"), // snap card/module dragging to the canvas grid
+  depsRoot: null,          // Dependency Graph view — currently focused table
+  depsMaxDepth: 3,         // how many hops of ancestors/descendants to show
+  depsZoom: 1,
+  depsPanX: 60,
+  depsPanY: 60,
 };
+
+// ---------- Snap-to-grid ----------
+// matches the 42px canvas background grid, so snapped cards visibly line up with it
+const GRID_SIZE = 42;
+function snapVal(v){ return state.snapToGrid ? Math.round(v / GRID_SIZE) * GRID_SIZE : v; }
 
 SCHEMA.modules.forEach(m => state.moduleEnabled[m] = true);
 

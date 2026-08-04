@@ -65,6 +65,7 @@ function openDetails(name){
 
   // relations tab
   let relHtml = "";
+  relHtml += `<button class="btn ghost" id="btnOpenDepsGraph" style="width:100%;justify-content:center;margin-bottom:12px;">${svgIcon("layers",13)} View full dependency graph</button>`;
   relHtml += `<div class="dp-rel-group"><h4>Outgoing (${t.fks.length})</h4>`;
   if (t.fks.length){
     relHtml += t.fks.map(fk => `<div class="dp-rel-item" data-jump="${fk.ref_table}"><span>${fk.column}</span><span class="arrow">→</span><b>${fk.ref_table}</b><span class="rule">${fk.on_delete}</span></div>`).join("");
@@ -78,6 +79,8 @@ function openDetails(name){
   document.querySelectorAll(".dp-rel-item").forEach(item => {
     item.onclick = () => { const target = item.dataset.jump; openDetails(target); centerOnTable(target); };
   });
+  const depsBtn = document.getElementById("btnOpenDepsGraph");
+  if (depsBtn) depsBtn.onclick = () => openDependencyGraph(name);
 
   // sql tab
   const createSql = buildCreateTableSQL(name);

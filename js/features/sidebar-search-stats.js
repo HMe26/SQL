@@ -249,6 +249,9 @@ function renderBreadcrumbs(){
   parts.push({ label: "Atlas", crumb: "root" });
   if (state.view === "mapping"){
     parts.push({ label: "Mapping", crumb: "mapping", current: true });
+  } else if (state.view === "deps"){
+    parts.push({ label: "Deps", crumb: "deps", current: !state.depsRoot });
+    if (state.depsRoot) parts.push({ label: state.depsRoot, crumb: "table", current: true });
   } else {
     if (state.activeModuleNav){
       parts.push({ label: state.activeModuleNav, crumb: "module", current: !state.selected });
@@ -273,6 +276,8 @@ function renderBreadcrumbs(){
       if (state.activeModuleNav) clearModuleNav();
     } else if (kind === "module"){
       if (state.selected) document.getElementById("detailsClose").click();
+    } else if (kind === "deps"){
+      document.getElementById("depsChangeRoot").click();
     }
   });
 })();
@@ -347,6 +352,49 @@ function computeComplexityScore(tableCount, totalFk, avgCols, circular, unused){
   return Math.max(1, Math.min(100, Math.round(score)));
 }
 
+/* ---- unified schema health indicator (green/yellow/red) ---- */
+function computeSchemaHealth(tableCount, circular, unused, complexity){
+  let score = 100;
+  score -= Math.min(45, circular * 18);                                   // dependency cycles are the biggest red flag
+  const unusedRatio = tableCount ? unused / tableCount : 0;
+  score -= Math.min(30, unusedRatio * 100 * 0.6);                          // isolated / orphaned tables
+  if (complexity > 80) score -= Math.min(20, (complexity - 80) * 1.2);     // over-dense schema is harder to maintain
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  let level = "good", label = "Healthy schema";
+  if (score < 55){ level = "bad"; label = "At risk"; }
+  else if (score < 80){ level = "warn"; label = "Needs attention"; }
+
+  const reasons = [];
+  if (circular) reasons.push(`${circular} circular dependenc${circular === 1 ? "y" : "ies"}`);
+  if (unused) reasons.push(`${unused} unused table${unused === 1 ? "" : "s"}`);
+  if (complexity > 80) reasons.push("high relation density");
+  const sub = reasons.length ? reasons.join(" · ") : "No cycles, no isolated tables";
+
+  return { score, level, label, sub };
+}
+
+function renderSchemaHealth(health){
+  const wrap = document.getElementById("schemaHealth");
+  if (!wrap) return;
+  wrap.className = `schema-health ${health.level}`;
+  const R = 18, C = 2 * Math.PI * R;
+  const offset = C * (1 - health.score / 100);
+  wrap.innerHTML = `
+    <div class="sh-ring">
+      <svg viewBox="0 0 44 44">
+        <circle class="sh-track" cx="22" cy="22" r="${R}"></circle>
+        <circle class="sh-fill" cx="22" cy="22" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${offset}"></circle>
+      </svg>
+      <div class="sh-num">${health.score}</div>
+    </div>
+    <div class="sh-body">
+      <div class="sh-label">${health.label}</div>
+      <div class="sh-sub">${health.sub}</div>
+    </div>`;
+  wrap.title = `Schema health score: ${health.score}/100 — ${health.sub}`;
+}
+
 function updateStatsUI(){
   const tables = SCHEMA.order;
   let totalCols = 0, totalPk = 0, totalFk = 0, totalIdx = 0;
@@ -364,6 +412,7 @@ function updateStatsUI(){
   const avgCols = tables.length ? (totalCols / tables.length) : 0;
   const circular = countCircularDependencies();
   const complexity = computeComplexityScore(tables.length, totalFk, avgCols, circular, unusedCount);
+  renderSchemaHealth(computeSchemaHealth(tables.length, circular, unusedCount, complexity));
 
   const stats = [
     { num: tables.length, lbl: "Tables" },

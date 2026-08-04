@@ -46,6 +46,24 @@ document.getElementById("btnAutoLayout").onclick = () => {
 document.getElementById("btnExpandAll").onclick = () => toggleExpandAll();
 updateExpandAllButton();
 
+/* ---- layout algorithm switch (grid <-> organic/force-directed) ---- */
+function applyLayoutModeButtonState(){
+  document.querySelectorAll("#layoutModeSwitch button").forEach(b => {
+    b.classList.toggle("active", b.dataset.layout === state.layoutMode);
+  });
+}
+document.querySelectorAll("#layoutModeSwitch button").forEach(btn => {
+  btn.onclick = () => {
+    if (state.layoutMode === btn.dataset.layout) return;
+    state.layoutMode = btn.dataset.layout;
+    localStorage.setItem("layoutMode", state.layoutMode);
+    applyLayoutModeButtonState();
+    document.getElementById("btnAutoLayout").click();
+    toast(state.layoutMode === "organic" ? "Organic layout — force-directed, may take a moment" : "Grid layout");
+  };
+});
+applyLayoutModeButtonState();
+
 /* ---- relationship routing style switch ---- */
 function applyRoutingButtonState(){
   document.querySelectorAll("#routingSwitch button").forEach(b => {

@@ -78,6 +78,11 @@ function orderModulesForLayout(){
 }
 
 function computeLayout(){
+  computeGridLayout();
+  if (state.layoutMode === "organic") computeOrganicLayout();
+}
+
+function computeGridLayout(){
   let curX = 0, curY = 0, rowMaxH = 0;
   state.groupBoxes = {};
   state.positions = {};
@@ -138,4 +143,170 @@ function contentBounds(){
   });
   return { w: maxX + 100, h: maxY + 100 };
 }
+
+/* ============================================================
+   ORGANIC LAYOUT — force-directed refinement pass with real
+   pairwise collision detection, run on top of the grid seed.
+   Nodes repel each other, FK edges act as springs toward an
+   ideal length, and a weak pull back toward each table's
+   original module cluster keeps modules from drifting into
+   one another over the course of the simulation.
+   ============================================================ */
+function computeOrganicLayout(){
+  const names = SCHEMA.order.filter(n => state.positions[n]);
+  if (!names.length) return;
+
+  // anchor each table to its module's grid-seeded center, so cohesion has
+  // a stable target instead of chasing a centroid that moves every iteration
+  const anchor = {};
+  names.forEach(n => {
+    const b = state.groupBoxes[SCHEMA.tables[n].module];
+    anchor[n] = b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : { x: 0, y: 0 };
+  });
+
+  const node = {};
+  names.forEach(n => {
+    const p = state.positions[n];
+    node[n] = { x: p.x + p.w / 2, y: p.y + p.h / 2, w: p.w, h: p.h, vx: 0, vy: 0 };
+  });
+
+  const edges = [];
+  names.forEach(n => {
+    SCHEMA.tables[n].fks.forEach(fk => {
+      if (node[fk.ref_table] && fk.ref_table !== n) edges.push([n, fk.ref_table]);
+    });
+  });
+
+  const REPEL_RADIUS = 460, REPEL_STRENGTH = 26000;
+  const SPRING_LEN = 300, SPRING_K = 0.02;
+  const COHESION_K = 0.012;
+  const DAMPING = 0.82;
+  const ITERATIONS = 160;
+
+  for (let iter = 0; iter < ITERATIONS; iter++){
+    names.forEach(n => { node[n].fx = 0; node[n].fy = 0; });
+
+    // pairwise repulsion — keeps cards from bunching together
+    for (let i = 0; i < names.length; i++){
+      const a = node[names[i]];
+      for (let j = i + 1; j < names.length; j++){
+        const b = node[names[j]];
+        let dx = b.x - a.x, dy = b.y - a.y;
+        let distSq = dx*dx + dy*dy;
+        if (distSq < 1) { dx = (Math.random()-0.5); dy = (Math.random()-0.5); distSq = 1; }
+        const dist = Math.sqrt(distSq);
+        if (dist < REPEL_RADIUS){
+          const force = REPEL_STRENGTH / distSq;
+          const fx = (dx / dist) * force, fy = (dy / dist) * force;
+          a.fx -= fx; a.fy -= fy;
+          b.fx += fx; b.fy += fy;
+        }
+      }
+    }
+
+    // FK edges act as springs toward an ideal resting length
+    edges.forEach(([an, bn]) => {
+      const a = node[an], b = node[bn];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.max(1, Math.sqrt(dx*dx + dy*dy));
+      const force = (dist - SPRING_LEN) * SPRING_K;
+      const fx = (dx / dist) * force, fy = (dy / dist) * force;
+      a.fx += fx; a.fy += fy;
+      b.fx -= fx; b.fy -= fy;
+    });
+
+    // weak pull back toward the table's original module cluster
+    names.forEach(n => {
+      const a = node[n];
+      a.fx += (anchor[n].x - a.x) * COHESION_K;
+      a.fy += (anchor[n].y - a.y) * COHESION_K;
+    });
+
+    // integrate
+    names.forEach(n => {
+      const a = node[n];
+      a.vx = (a.vx + a.fx) * DAMPING;
+      a.vy = (a.vy + a.fy) * DAMPING;
+      a.x += a.vx;
+      a.y += a.vy;
+    });
+
+    // direct AABB collision resolution — guarantees no overlapping cards
+    // survive the simulation even where spring/repulsion forces balance out
+    for (let i = 0; i < names.length; i++){
+      const a = node[names[i]];
+      for (let j = i + 1; j < names.length; j++){
+        const b = node[names[j]];
+        const overlapX = (a.w + b.w) / 2 + CARD_GAP_X - Math.abs(b.x - a.x);
+        const overlapY = (a.h + b.h) / 2 + CARD_GAP_Y - Math.abs(b.y - a.y);
+        if (overlapX > 0 && overlapY > 0){
+          if (overlapX < overlapY){
+            const push = (overlapX / 2) * (b.x >= a.x ? 1 : -1);
+            a.x -= push; b.x += push;
+          } else {
+            const push = (overlapY / 2) * (b.y >= a.y ? 1 : -1);
+            a.y -= push; b.y += push;
+          }
+        }
+      }
+    }
+  }
+
+  // finishing pass: pure collision separation, no springs/repulsion pulling
+  // cards back together, so any overlap left over from the simulation is
+  // fully resolved rather than just reduced
+  for (let pass = 0; pass < 60; pass++){
+    let anyOverlap = false;
+    for (let i = 0; i < names.length; i++){
+      const a = node[names[i]];
+      for (let j = i + 1; j < names.length; j++){
+        const b = node[names[j]];
+        const overlapX = (a.w + b.w) / 2 + CARD_GAP_X - Math.abs(b.x - a.x);
+        const overlapY = (a.h + b.h) / 2 + CARD_GAP_Y - Math.abs(b.y - a.y);
+        if (overlapX > 0 && overlapY > 0){
+          anyOverlap = true;
+          if (overlapX < overlapY){
+            const push = (overlapX / 2 + 0.5) * (b.x >= a.x ? 1 : -1);
+            a.x -= push; b.x += push;
+          } else {
+            const push = (overlapY / 2 + 0.5) * (b.y >= a.y ? 1 : -1);
+            a.y -= push; b.y += push;
+          }
+        }
+      }
+    }
+    if (!anyOverlap) break;
+  }
+
+  names.forEach(n => {
+    const a = node[n];
+    state.positions[n] = { x: a.x - a.w/2, y: a.y - a.h/2, w: a.w, h: a.h };
+  });
+
+  // re-fit each module's group box tightly around its members' final positions
+  SCHEMA.modules.forEach(mod => {
+    const members = names.filter(n => SCHEMA.tables[n].module === mod);
+    if (!members.length){ state.groupBoxes[mod] = { x: 0, y: 0, w: CARD_W + GROUP_PAD*2, h: GROUP_HEADER + GROUP_PAD*2 }; return; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    members.forEach(n => {
+      const p = state.positions[n];
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x + p.w); maxY = Math.max(maxY, p.y + p.h);
+    });
+    state.groupBoxes[mod] = {
+      x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER,
+      w: (maxX - minX) + GROUP_PAD*2, h: (maxY - minY) + GROUP_PAD*2 + GROUP_HEADER
+    };
+  });
+
+  // organic layout can produce a negative bounding origin — shift everything
+  // back into positive space so contentBounds()/fitView() behave normally
+  let shiftX = 0, shiftY = 0;
+  Object.values(state.groupBoxes).forEach(b => { shiftX = Math.min(shiftX, b.x); shiftY = Math.min(shiftY, b.y); });
+  if (shiftX < 0 || shiftY < 0){
+    Object.values(state.groupBoxes).forEach(b => { b.x -= shiftX; b.y -= shiftY; });
+    Object.values(state.positions).forEach(p => { p.x -= shiftX; p.y -= shiftY; });
+  }
+}
+
 

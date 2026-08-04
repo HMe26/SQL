@@ -18,6 +18,32 @@
 }
 .muted{ color:var(--text-2); font-weight:400; text-transform:none; letter-spacing:0; }
 
+.schema-health{
+  display:flex; align-items:center; gap:12px;
+  padding:12px 14px; margin-bottom:10px;
+  border-radius:14px; border:1px solid var(--panel-border);
+  background:rgba(255,255,255,0.035);
+  cursor:default;
+}
+.schema-health .sh-ring{ position:relative; width:44px; height:44px; flex-shrink:0; }
+.schema-health .sh-ring svg{ width:44px; height:44px; transform:rotate(-90deg); }
+.schema-health .sh-ring circle{ fill:none; stroke-width:4; }
+.schema-health .sh-ring .sh-track{ stroke:rgba(255,255,255,0.08); }
+.schema-health .sh-ring .sh-fill{ stroke-linecap:round; transition:stroke-dashoffset .6s ease, stroke .3s; }
+.schema-health .sh-ring .sh-num{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; font-size:13px;
+}
+.schema-health .sh-body{ flex:1; min-width:0; }
+.schema-health .sh-label{ font-size:12.5px; font-weight:700; margin-bottom:2px; }
+.schema-health .sh-sub{ font-size:10.5px; color:var(--text-2); line-height:1.4; }
+.schema-health.good .sh-fill, .schema-health.good .sh-num{ stroke:#3ddc97; color:#3ddc97; }
+.schema-health.warn .sh-fill, .schema-health.warn .sh-num{ stroke:#ffb454; color:#ffb454; }
+.schema-health.bad  .sh-fill, .schema-health.bad  .sh-num{ stroke:#ff6b6b; color:#ff6b6b; }
+.schema-health.good .sh-label{ color:#3ddc97; }
+.schema-health.warn .sh-label{ color:#ffb454; }
+.schema-health.bad  .sh-label{ color:#ff6b6b; }
+
 .stat-grid{
   display:grid; grid-template-columns:1fr 1fr; gap:8px;
 }

@@ -1,0 +1,95 @@
+/* ============ DEPENDENCY GRAPH VIEW ============ */
+#depsWrap{
+  grid-area: canvas;
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 42px 42px;
+  cursor:grab;
+}
+#depsWrap.panning{ cursor:grabbing; }
+#depsViewport{ position:absolute; top:0; left:0; width:100%; height:100%; transform-origin:0 0; }
+#depsSvg{ position:absolute; top:0; left:0; overflow:visible; }
+
+.deps-empty{
+  position:absolute; inset:0; z-index:5;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:40px;
+  background: radial-gradient(circle at 50% 35%, rgba(124,157,255,0.06), transparent 60%);
+}
+.deps-empty-icon{ color:var(--text-2); margin-bottom:6px; opacity:.8; }
+.deps-empty h3{ font-family:var(--font-display); font-size:18px; margin:4px 0 6px; color:var(--text-0); }
+.deps-empty p{ max-width:380px; font-size:12.5px; color:var(--text-2); line-height:1.5; margin:0 0 18px; }
+.deps-empty-search-wrap{ position:relative; width:100%; max-width:340px; }
+.deps-empty-search-wrap input{
+  width:100%; height:40px; padding:0 14px; border-radius:12px;
+  background:rgba(255,255,255,0.04); border:1px solid var(--panel-border);
+  color:var(--text-0); font-size:13px; font-family:var(--font-body);
+}
+.deps-empty-search-wrap input:focus{ outline:none; border-color:rgba(124,157,255,0.55); }
+.deps-picker-results{
+  position:absolute; top:46px; left:0; right:0; z-index:6;
+  max-height:260px; overflow-y:auto;
+  background:var(--panel-solid); border:1px solid var(--panel-border-strong);
+  border-radius:12px; box-shadow:0 20px 44px -18px rgba(0,0,0,0.6);
+  text-align:left;
+}
+.deps-picker-item{
+  display:flex; align-items:center; gap:8px;
+  padding:9px 12px; font-size:12.5px; color:var(--text-1); cursor:pointer;
+}
+.deps-picker-item:hover{ background:rgba(124,157,255,0.12); color:var(--text-0); }
+.deps-picker-item .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.deps-picker-empty{ padding:12px; font-size:12px; color:var(--text-2); }
+
+.deps-header{
+  position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:4;
+  display:flex; align-items:center; gap:10px;
+  padding:8px 10px 8px 16px; border-radius:14px;
+  background:var(--panel-solid); border:1px solid var(--panel-border-strong);
+  box-shadow:0 14px 34px -16px rgba(0,0,0,0.55);
+  font-size:12.5px; color:var(--text-1);
+}
+.deps-header-label{ color:var(--text-2); }
+.deps-header b{ font-family:var(--font-display); font-size:13.5px; }
+
+.deps-node{
+  position:relative; width:100%; height:100%;
+  border-radius:14px;
+  background: linear-gradient(180deg, rgba(26,29,44,0.92), rgba(16,18,28,0.94));
+  border:1.5px solid var(--mod-color, var(--panel-border-strong));
+  box-shadow: 0 14px 32px -18px rgba(0,0,0,0.7);
+  padding:10px 12px;
+  cursor:pointer; user-select:none;
+  transition: transform .15s, box-shadow .15s;
+}
+html[data-theme="light"] .deps-node{
+  background: linear-gradient(180deg, #ffffff, #f8f9fc);
+  box-shadow: 0 10px 24px -16px rgba(15,23,42,0.25);
+}
+.deps-node:hover{ transform: translateY(-2px); box-shadow: 0 20px 42px -16px rgba(0,0,0,0.75), 0 0 0 2px var(--mod-color); }
+.deps-node.root{ box-shadow: 0 0 0 2px var(--mod-color), 0 18px 40px -16px rgba(0,0,0,0.75); cursor:default; }
+.deps-node .dn-top{ display:flex; align-items:center; gap:7px; }
+.deps-node .dn-dot{ width:9px; height:9px; border-radius:50%; background:var(--mod-color); box-shadow:0 0 8px 1px var(--mod-color); flex-shrink:0; }
+.deps-node .dn-name{ font-family:var(--font-display); font-weight:700; font-size:13.5px; color:var(--text-0); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.deps-node .dn-role{ font-size:10px; color:var(--text-2); margin-top:5px; }
+.deps-node .dn-mod{ font-size:10px; color:var(--mod-color); margin-top:3px; font-weight:600; }
+
+.deps-edge{ fill:none; stroke-width:2; opacity:.75; transition:opacity .15s, stroke-width .15s; }
+.deps-edge:hover{ opacity:1; stroke-width:3; }
+.deps-edge-glow{ fill:none; stroke-width:6; opacity:0; pointer-events:none; }
+
+#depsZoomControls{
+  position:absolute; right:16px; bottom:16px; z-index:4;
+  display:flex; align-items:center; gap:6px;
+  background:var(--panel-solid); border:1px solid var(--panel-border-strong);
+  border-radius:12px; padding:6px 8px;
+  font-size:11px; color:var(--text-2);
+}
+#depsZoomControls button{
+  width:24px; height:24px; border-radius:7px; border:none;
+  background:rgba(255,255,255,0.05); color:var(--text-1); cursor:pointer; font-size:14px;
+}
+#depsZoomControls button:hover{ background:rgba(124,157,255,0.16); color:var(--text-0); }

@@ -38,6 +38,7 @@ canvasWrap.addEventListener("contextmenu", (e) => {
       { header: name },
       { label: "Open details", icon: "file-text", action: () => openDetails(name) },
       { label: "Focus this table", icon: "target", action: () => { openDetails(name); toggleFocusMode(true); } },
+      { label: "Dependency graph", icon: "layers", action: () => openDependencyGraph(name) },
       { sep: true },
       ...(SCHEMA.tables[name].columns.length > MAX_VISIBLE_COLS ? [
         { label: state.expanded[name] ? "Collapse columns" : "Expand all columns", icon: "layers", action: () => toggleCardExpand(name) },
@@ -57,6 +58,16 @@ canvasWrap.addEventListener("contextmenu", (e) => {
       { label: "Open command palette", icon: "terminal", action: () => openCommandPalette() },
     ], e.clientX, e.clientY);
   }
+});
+
+depsWrap.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  showContextMenu([
+    { label: "Fit to screen", icon: "layout-grid", action: () => fitDepsView() },
+    { label: "Pick a different table", icon: "target", action: () => document.getElementById("depsChangeRoot").click() },
+    { sep: true },
+    { label: "Switch to ERD view", icon: "layers", action: () => switchView("erd") },
+  ], e.clientX, e.clientY);
 });
 
 mappingWrap.addEventListener("contextmenu", (e) => {

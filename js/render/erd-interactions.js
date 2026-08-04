@@ -29,8 +29,8 @@ function attachCardEvents(name, g){
       const dx = (ev.clientX - dragState.startX) / state.zoom;
       const dy = (ev.clientY - dragState.startY) / state.zoom;
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragState.moved = true;
-      p.x = dragState.origX + dx;
-      p.y = dragState.origY + dy;
+      p.x = snapVal(dragState.origX + dx);
+      p.y = snapVal(dragState.origY + dy);
       g.setAttribute("transform", `translate(${p.x},${p.y})`);
       updateEdgesForTable(name);
     };
@@ -91,8 +91,8 @@ function attachGroupDragEvents(mod, groupEl){
       if (!ev) return;
       const dx = (ev.clientX - dragState.startX) / state.zoom;
       const dy = (ev.clientY - dragState.startY) / state.zoom;
-      b.x = dragState.origBoxX + dx;
-      b.y = dragState.origBoxY + dy;
+      b.x = snapVal(dragState.origBoxX + dx);
+      b.y = snapVal(dragState.origBoxY + dy);
       const gn = groupNodes[mod];
       gn.rect.setAttribute("x", b.x);
       gn.rect.setAttribute("y", b.y);
@@ -102,8 +102,8 @@ function attachGroupDragEvents(mod, groupEl){
       gn.cnt.setAttribute("y", b.y + 24);
       dragState.members.forEach(mem => {
         const p = state.positions[mem.name];
-        p.x = mem.x + dx;
-        p.y = mem.y + dy;
+        p.x = snapVal(mem.x + dx);
+        p.y = snapVal(mem.y + dy);
         cardNodes[mem.name].g.setAttribute("transform", `translate(${p.x},${p.y})`);
         updateEdgesForTable(mem.name);
       });

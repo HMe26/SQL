@@ -356,8 +356,10 @@ function switchView(view){
   state.view = view;
   document.getElementById("canvasWrap").style.display = view === "erd" ? "" : "none";
   mappingWrap.style.display = view === "mapping" ? "" : "none";
+  document.getElementById("depsWrap").style.display = view === "deps" ? "" : "none";
   document.getElementById("tabViewErd").classList.toggle("active", view === "erd");
   document.getElementById("tabViewMapping").classList.toggle("active", view === "mapping");
+  document.getElementById("tabViewDeps").classList.toggle("active", view === "deps");
   document.querySelector(".search-wrap").style.visibility = view === "erd" ? "" : "hidden";
   document.getElementById("btnFocusMode").style.visibility = view === "erd" ? "" : "hidden";
   document.getElementById("btnExpandAll").style.visibility = view === "erd" ? "" : "hidden";
@@ -370,6 +372,11 @@ function switchView(view){
     } else {
       applyMapTransform();
     }
+  } else if (view === "deps"){
+    if (state.depsRoot){
+      renderDepsView();
+      requestAnimationFrame(fitDepsView);
+    }
   } else {
     applyTransform();
   }
@@ -377,4 +384,5 @@ function switchView(view){
 }
 document.getElementById("tabViewErd").onclick = () => switchView("erd");
 document.getElementById("tabViewMapping").onclick = () => switchView("mapping");
+document.getElementById("tabViewDeps").onclick = () => switchView("deps");
 
