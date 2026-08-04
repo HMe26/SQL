@@ -11,10 +11,20 @@ function attachCardEvents(name, g){
     const p = state.positions[name];
     dragState = {
       startX: e.clientX, startY: e.clientY,
-      origX: p.x, origY: p.y, moved: false
+      origX: p.x, origY: p.y, moved: false,
+      pendingEvent: null, rafId: null
     };
     cardEl() && cardEl().classList.add("dragging");
-    const onMove = (ev) => {
+
+    // PERF: a raw "mousemove" can fire 100+ times/sec, far faster than the
+    // screen can redraw. Writing the SVG transform + recomputing every FK
+    // edge path on each one caused visible stutter while dragging. Instead
+    // we just record the latest mouse position here and do the actual DOM
+    // work at most once per animation frame via applyPendingDrag().
+    const applyPendingDrag = () => {
+      dragState.rafId = null;
+      const ev = dragState.pendingEvent;
+      if (!ev) return;
       const dx = (ev.clientX - dragState.startX) / state.zoom;
       const dy = (ev.clientY - dragState.startY) / state.zoom;
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragState.moved = true;
@@ -23,7 +33,12 @@ function attachCardEvents(name, g){
       g.setAttribute("transform", `translate(${p.x},${p.y})`);
       updateEdgesForTable(name);
     };
+    const onMove = (ev) => {
+      dragState.pendingEvent = ev;
+      if (dragState.rafId == null) dragState.rafId = requestAnimationFrame(applyPendingDrag);
+    };
     const onUp = () => {
+      if (dragState.rafId != null) { cancelAnimationFrame(dragState.rafId); applyPendingDrag(); }
       cardEl() && cardEl().classList.remove("dragging");
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
@@ -60,9 +75,18 @@ function attachGroupDragEvents(mod, groupEl){
       startX: e.clientX, startY: e.clientY,
       origBoxX: b.x, origBoxY: b.y,
       members: memberTables.map(n => ({ name: n, x: state.positions[n].x, y: state.positions[n].y })),
+      pendingEvent: null, rafId: null
     };
     groupEl.classList.add("dragging-group");
-    const onMove = (ev) => {
+
+    // PERF: same coalescing as single-card drag, but here it matters even
+    // more — a whole module can contain a dozen+ tables, each with its own
+    // FK edges, all recomputed together on every mousemove. Batching this
+    // to once per frame keeps dragging a whole module smooth.
+    const applyPendingDrag = () => {
+      dragState.rafId = null;
+      const ev = dragState.pendingEvent;
+      if (!ev) return;
       const dx = (ev.clientX - dragState.startX) / state.zoom;
       const dy = (ev.clientY - dragState.startY) / state.zoom;
       b.x = dragState.origBoxX + dx;
@@ -82,7 +106,12 @@ function attachGroupDragEvents(mod, groupEl){
         updateEdgesForTable(mem.name);
       });
     };
+    const onMove = (ev) => {
+      dragState.pendingEvent = ev;
+      if (dragState.rafId == null) dragState.rafId = requestAnimationFrame(applyPendingDrag);
+    };
     const onUp = () => {
+      if (dragState.rafId != null) { cancelAnimationFrame(dragState.rafId); applyPendingDrag(); }
       groupEl.classList.remove("dragging-group");
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
@@ -113,6 +142,22 @@ function applyTransform(){
   renderMinimapViewport();
 }
 
+// PERF: applyTransform() ends up calling canvasWrap.getBoundingClientRect()
+// (via renderMinimapViewport), which forces the browser to stop and
+// recompute layout synchronously. Calling that on every raw mousemove/wheel
+// event (which can fire far faster than the screen redraws) is what caused
+// panning/zooming to feel like it was hanging. requestTransformUpdate()
+// coalesces any number of calls within the same frame into a single
+// applyTransform() right before the next repaint.
+let transformRafId = null;
+function requestTransformUpdate(){
+  if (transformRafId != null) return;
+  transformRafId = requestAnimationFrame(() => {
+    transformRafId = null;
+    applyTransform();
+  });
+}
+
 let isPanning = false, panStart = null;
 canvasWrap.addEventListener("mousedown", (e) => {
   if (e.target.closest(".table-card")) return;
@@ -124,7 +169,7 @@ window.addEventListener("mousemove", (e) => {
   if (!isPanning) return;
   state.panX = e.clientX - panStart.x;
   state.panY = e.clientY - panStart.y;
-  applyTransform();
+  requestTransformUpdate();
 });
 window.addEventListener("mouseup", () => { isPanning = false; canvasWrap.classList.remove("panning"); });
 
@@ -139,7 +184,7 @@ canvasWrap.addEventListener("wheel", (e) => {
   state.panX = mx - worldX * newZoom;
   state.panY = my - worldY * newZoom;
   state.zoom = newZoom;
-  applyTransform();
+  requestTransformUpdate();
 }, { passive: false });
 
 // touch support (pinch + pan + double-tap zoom + long-press to open details)
@@ -195,12 +240,12 @@ canvasWrap.addEventListener("touchmove", (e) => {
   if (touchState.mode === "pan" && e.touches.length === 1){
     state.panX = e.touches[0].clientX - touchState.x;
     state.panY = e.touches[0].clientY - touchState.y;
-    applyTransform();
+    requestTransformUpdate();
   } else if (touchState.mode === "pinch" && e.touches.length === 2){
     const [a,b] = e.touches;
     const dist = Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
     state.zoom = Math.min(2.4, Math.max(0.18, touchState.zoom * (dist / touchState.dist)));
-    applyTransform();
+    requestTransformUpdate();
   }
 }, { passive: true });
 canvasWrap.addEventListener("touchend", () => { touchState = null; clearLongPress(); });

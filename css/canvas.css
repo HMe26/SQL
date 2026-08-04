@@ -195,6 +195,17 @@ html[data-theme="light"] .table-card:hover{
   stroke-dasharray: 1 7;
   stroke-linecap:round;
   opacity:0.9;
+  /* PERF: no animation by default — with ~80 relationships on screen, an
+     "infinite" animation running on every single one at all times forces
+     the browser to repaint continuously even when nothing is happening,
+     which is a major cause of jank/hangs during pan, zoom and drag.
+     The moving-dash effect now only plays for the edge(s) currently being
+     hovered or highlighted by Smart Focus Mode — everywhere else it's a
+     plain (static) dashed line, which is visually almost identical at
+     rest but costs zero ongoing repaint work. */
+}
+.rel-flow.hover-active,
+.rel-flow.focus-active{
   animation: flow 1.4s linear infinite;
 }
 .rel-flow.hover-active{

@@ -113,10 +113,20 @@ function cycleSearchMatch(){
   openDetails(target);
 }
 
+// PERF: applyFilters() walks every table card and every FK edge to update
+// visibility/highlighting. Running it on every keystroke made fast typing
+// feel laggy. Debouncing by ~120ms means it only runs once typing pauses
+// briefly, which is imperceptible to the person typing but avoids dozens
+// of redundant full passes for a single search term.
+let searchDebounceId = null;
 document.getElementById("searchInput").addEventListener("input", (e) => {
   state.search = e.target.value;
   state.searchMatchIndex = -1;
-  applyFilters();
+  if (searchDebounceId != null) clearTimeout(searchDebounceId);
+  searchDebounceId = setTimeout(() => {
+    searchDebounceId = null;
+    applyFilters();
+  }, 120);
 });
 
 /* ---- sidebar: module navigator ---- */
