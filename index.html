@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UIP — Database Atlas</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header id="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="22" height="22">
+          <circle cx="16" cy="8" r="4.2"/>
+          <circle cx="7" cy="23" r="4.2"/>
+          <circle cx="25" cy="23" r="4.2"/>
+          <path d="M16 12.2 L9 19.4 M16 12.2 L23 19.4" stroke-width="1.6" fill="none"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">UIP Database Atlas</span>
+        <span class="brand-sub">University Innovation Platform · schema map</span>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="Search tables, columns, modules…" autocomplete="off" />
+      <span id="searchCount" class="search-count"></span>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="btn ghost" id="btnAutoLayout" title="Re-run auto layout">
+        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+        Auto Layout
+      </button>
+      <button class="btn ghost" id="btnFitView" title="Fit to screen">
+        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        Fit
+      </button>
+      <div class="export-group">
+        <button class="btn primary" id="btnExportMenu">
+          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 3v13m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+          Export
+        </button>
+        <div class="export-menu" id="exportMenu">
+          <button data-export="png">Export as PNG</button>
+          <button data-export="svg">Export as SVG</button>
+          <button data-export="pdf">Export as PDF</button>
+          <button data-export="print">Print diagram</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ LEFT SIDEBAR ============ -->
+  <aside id="sidebar">
+    <div class="sidebar-section">
+      <h3>Overview</h3>
+      <div class="stat-grid" id="statGrid"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Filter by module</h3>
+      <div class="module-filters" id="moduleFilters"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Quick filters</h3>
+      <div class="quick-filters" id="quickFilters">
+        <button class="chip" data-quick="pk">Has PK</button>
+        <button class="chip" data-quick="fk">Has FK</button>
+        <button class="chip" data-quick="empty">Hide isolated</button>
+        <button class="chip" data-quick="reset">Reset filters</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section grow">
+      <h3>Table index <span id="tableIndexCount" class="muted"></span></h3>
+      <div class="table-index" id="tableIndex"></div>
+    </div>
+  </aside>
+
+  <!-- ============ CANVAS ============ -->
+  <main id="canvasWrap">
+    <div id="canvasViewport">
+      <svg id="canvasSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <!-- floating legend -->
+    <div id="legend" class="floating-panel">
+      <div class="floating-header">
+        <span>Legend</span>
+        <button class="icon-btn" id="legendToggle">–</button>
+      </div>
+      <div class="legend-body" id="legendBody"></div>
+    </div>
+
+    <!-- minimap -->
+    <div id="minimap" class="floating-panel">
+      <div class="floating-header">
+        <span>Minimap</span>
+      </div>
+      <svg id="minimapSvg" viewBox="0 0 220 150"></svg>
+    </div>
+
+    <!-- zoom controls -->
+    <div id="zoomControls">
+      <button id="zoomIn" title="Zoom in">+</button>
+      <span id="zoomLevel">100%</span>
+      <button id="zoomOut" title="Zoom out">–</button>
+    </div>
+
+    <div id="canvasHint" class="canvas-hint">Scroll to zoom · Drag to pan · Click a table for details</div>
+  </main>
+
+  <!-- ============ DETAILS PANEL ============ -->
+  <aside id="detailsPanel">
+    <div class="details-header">
+      <div>
+        <div class="details-module" id="detailsModule"></div>
+        <h2 id="detailsTitle">—</h2>
+      </div>
+      <button class="icon-btn" id="detailsClose">✕</button>
+    </div>
+
+    <div class="details-tabs">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="columns">Columns</button>
+      <button class="tab" data-tab="relations">Relations</button>
+      <button class="tab" data-tab="sql">SQL</button>
+    </div>
+
+    <div class="details-body">
+      <div class="tab-panel active" id="tab-overview"></div>
+      <div class="tab-panel" id="tab-columns"></div>
+      <div class="tab-panel" id="tab-relations"></div>
+      <div class="tab-panel" id="tab-sql"></div>
+    </div>
+  </aside>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="schema-data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
