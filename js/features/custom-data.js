@@ -210,11 +210,13 @@ function cdInjectModalShell(){
       <div class="cd-tabs">
         <button class="cd-tab active" data-tab="form">New table (form)</button>
         <button class="cd-tab" data-tab="json">Bulk import (JSON)</button>
+        <button class="cd-tab" data-tab="sql">Import SQL</button>
         <button class="cd-tab" data-tab="manage">My custom tables <span id="cdManageCount" class="cd-count"></span></button>
       </div>
       <div class="cd-body">
         <div class="cd-panel active" id="cdPanelForm"></div>
         <div class="cd-panel" id="cdPanelJson"></div>
+        <div class="cd-panel" id="cdPanelSql"></div>
         <div class="cd-panel" id="cdPanelManage"></div>
       </div>
     </div>`;
@@ -240,6 +242,7 @@ function cdOpenModal(prefillName){
   document.getElementById("cdModalOverlay").classList.add("open");
   cdRenderFormTab(prefillName ? SCHEMA.tables[prefillName] : null);
   cdRenderJsonTab();
+  cdRenderSqlTab();
   cdRenderManageTab();
 }
 function cdCloseModal(){
@@ -464,7 +467,260 @@ function cdSubmitJson(){
   cdCloseModal();
 }
 
-/* ---------- Tab 3: manage ---------- */
+/* ---------- Tab 3: SQL import ----------
+   Lightweight CREATE TABLE parser — handles standard MySQL-flavoured DDL:
+   columns, PRIMARY KEY / FOREIGN KEY (inline or as table-level constraints),
+   UNIQUE / KEY / INDEX, DEFAULT / NOT NULL / NULL / AUTO_INCREMENT, and an
+   optional COMMENT='...' on the table. Not a full SQL engine on purpose —
+   good enough for real-world CREATE TABLE dumps from MySQL/MariaDB/Postgres-ish
+   syntax. Multiple CREATE TABLE statements in one paste are all imported.
+   You can steer module/icon/description per table with plain comments right
+   above the statement:
+     -- module: Mentorship
+     -- icon: calendar-clock
+     -- desc: One row per 1:1 mentor/student session
+     CREATE TABLE mentorship_sessions ( ... );
+------------------------------------------------------------------------- */
+function cdSqlModuleHue(mod){
+  let h = 0;
+  for (let i = 0; i < mod.length; i++) h = (h * 31 + mod.charCodeAt(i)) % 360;
+  return h;
+}
+function cdSqlStripBlockComments(sql){
+  return sql.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+}
+function cdSqlSplitTopLevel(str, delimiterChar){
+  const parts = [];
+  let depth = 0, current = "", quote = null;
+  for (let i = 0; i < str.length; i++){
+    const ch = str[i];
+    if (quote){
+      current += ch;
+      if (ch === quote && str[i - 1] !== "\\") quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`"){ quote = ch; current += ch; continue; }
+    if (ch === "("){ depth++; current += ch; continue; }
+    if (ch === ")"){ depth--; current += ch; continue; }
+    if (ch === delimiterChar && depth === 0){ parts.push(current); current = ""; continue; }
+    current += ch;
+  }
+  if (current.trim()) parts.push(current);
+  return parts;
+}
+function cdSqlStripQuotes(s){
+  if (s == null) return s;
+  s = s.trim();
+  if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) return s.slice(1, -1);
+  return s;
+}
+function cdSqlUnbacktick(name){
+  return (name || "").trim().replace(/^`|`$/g, "").replace(/^\[|\]$/g, "");
+}
+function cdSqlExtractMeta(preambleText){
+  const meta = { module: null, icon: null, desc: null };
+  preambleText.split(/\r?\n/).forEach(raw => {
+    const line = raw.trim();
+    if (!line.startsWith("--") && !line.startsWith("#")) return;
+    const clean = line.replace(/^--\s*|^#\s*/, "");
+    const mMod = clean.match(/^module\s*:\s*(.+)$/i);
+    const mIcon = clean.match(/^icon\s*:\s*(.+)$/i);
+    const mDesc = clean.match(/^desc(?:ription)?\s*:\s*(.+)$/i);
+    if (mMod) meta.module = mMod[1].trim();
+    if (mIcon) meta.icon = mIcon[1].trim();
+    if (mDesc) meta.desc = mDesc[1].trim();
+  });
+  return meta;
+}
+function cdSqlParseColumnDef(defText){
+  let text = defText.trim();
+  const nameMatch = text.match(/^`?([A-Za-z_][A-Za-z0-9_]*)`?\s+(.+)$/s);
+  if (!nameMatch) return null;
+  const colName = nameMatch[1];
+  let rest = nameMatch[2].trim();
+
+  const typeMatch = rest.match(/^([A-Za-z][A-Za-z0-9]*(?:\s*\([^)]*\))?(?:\s+UNSIGNED)?(?:\s+ZEROFILL)?)/i);
+  let colType = typeMatch ? typeMatch[1].replace(/\s+/g, " ").trim() : "VARCHAR(255)";
+  rest = rest.slice(typeMatch ? typeMatch[0].length : 0).trim();
+
+  let nullable = true;
+  if (/\bNOT\s+NULL\b/i.test(rest)) nullable = false;
+  else if (/\bNULL\b/i.test(rest)) nullable = true;
+
+  let def = null;
+  const defMatch = rest.match(/\bDEFAULT\s+('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|CURRENT_TIMESTAMP(?:\(\))?|NULL|[+-]?\d+(?:\.\d+)?|\S+)/i);
+  if (defMatch){
+    def = cdSqlStripQuotes(defMatch[1]);
+    if (/^NULL$/i.test(def)) def = null;
+  }
+  const unique = /\bUNIQUE\b/i.test(rest);
+  const isInlinePk = /\bPRIMARY\s+KEY\b/i.test(rest);
+
+  return {
+    column: { name: colName, type: colType.toUpperCase(), nullable, default: def, unique },
+    isInlinePk
+  };
+}
+function cdSqlParseCreateTable(stmt, meta){
+  const headerMatch = stmt.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?\[?([A-Za-z_][A-Za-z0-9_]*)\]?`?\s*\(/i);
+  if (!headerMatch) return null;
+  const tableName = cdSqlUnbacktick(headerMatch[1]);
+
+  const openIdx = stmt.indexOf("(", headerMatch.index);
+  if (openIdx === -1) return null;
+  let depth = 0, closeIdx = -1;
+  for (let i = openIdx; i < stmt.length; i++){
+    if (stmt[i] === "(") depth++;
+    else if (stmt[i] === ")"){ depth--; if (depth === 0){ closeIdx = i; break; } }
+  }
+  if (closeIdx === -1) return null;
+
+  const body = stmt.slice(openIdx + 1, closeIdx);
+  const tail = stmt.slice(closeIdx + 1);
+  const tableCommentMatch = tail.match(/COMMENT\s*=?\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/i);
+  const tableComment = tableCommentMatch ? cdSqlStripQuotes(tableCommentMatch[1]) : null;
+
+  const parts = cdSqlSplitTopLevel(body, ",").map(p => p.trim()).filter(Boolean);
+
+  const columns = [], pk = [], fks = [], indexes = [], uniques = [];
+  parts.forEach(p => {
+    let m;
+    if ((m = p.match(/^(?:CONSTRAINT\s+`?\w+`?\s+)?PRIMARY\s+KEY\s*\(([^)]+)\)/i))){
+      m[1].split(",").forEach(c => pk.push(cdSqlUnbacktick(c.trim())));
+      return;
+    }
+    if ((m = p.match(/^(?:CONSTRAINT\s+`?\w+`?\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+`?\[?([A-Za-z_][A-Za-z0-9_]*)\]?`?\s*\(([^)]+)\)(.*)$/i))){
+      const cols = m[1].split(",").map(c => cdSqlUnbacktick(c.trim()));
+      const refTable = cdSqlUnbacktick(m[2]);
+      const refCols = m[3].split(",").map(c => cdSqlUnbacktick(c.trim()));
+      const extra = m[4] || "";
+      const onDeleteMatch = extra.match(/ON\s+DELETE\s+(CASCADE|RESTRICT|SET\s+NULL|NO\s+ACTION|SET\s+DEFAULT)/i);
+      const onUpdateMatch = extra.match(/ON\s+UPDATE\s+(CASCADE|RESTRICT|SET\s+NULL|NO\s+ACTION|SET\s+DEFAULT)/i);
+      cols.forEach((c, i) => {
+        fks.push({
+          column: c, ref_table: refTable, ref_column: refCols[i] || refCols[0],
+          on_delete: onDeleteMatch ? onDeleteMatch[1].toUpperCase().replace(/\s+/g, " ") : "CASCADE",
+          on_update: onUpdateMatch ? onUpdateMatch[1].toUpperCase().replace(/\s+/g, " ") : "RESTRICT"
+        });
+      });
+      return;
+    }
+    if ((m = p.match(/^UNIQUE\s*(?:KEY|INDEX)?\s*`?\w*`?\s*\(([^)]+)\)/i))){
+      uniques.push(m[1].split(",").map(c => cdSqlUnbacktick(c.trim())));
+      return;
+    }
+    if ((m = p.match(/^(?:KEY|INDEX)\s*`?\w*`?\s*\(([^)]+)\)/i))){
+      indexes.push({ cols: m[1].split(",").map(c => cdSqlUnbacktick(c.trim())) });
+      return;
+    }
+    const parsedCol = cdSqlParseColumnDef(p);
+    if (parsedCol){
+      columns.push(parsedCol.column);
+      if (parsedCol.isInlinePk) pk.push(parsedCol.column.name);
+    }
+  });
+
+  return {
+    name: tableName,
+    columns, pk: [...new Set(pk)], fks, indexes, uniques,
+    description: meta.desc || tableComment || "",
+    module: meta.module || "Custom / Imported",
+    icon: meta.icon || "database"
+  };
+}
+function cdParseSqlToDefs(sqlRaw){
+  const sql = cdSqlStripBlockComments(sqlRaw);
+  const results = [];
+  const createRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?\[?[A-Za-z_][A-Za-z0-9_]*\]?`?\s*\(/gi;
+  let match;
+  const starts = [];
+  while ((match = createRegex.exec(sql)) !== null) starts.push(match.index);
+  if (!starts.length) return results;
+
+  starts.forEach((startIdx, i) => {
+    const searchFrom = i === 0 ? 0 : starts[i - 1];
+    const chunkBefore = sql.slice(searchFrom, startIdx);
+    const lastSemi = chunkBefore.lastIndexOf(";");
+    const preamble = lastSemi === -1 ? chunkBefore : chunkBefore.slice(lastSemi + 1);
+    const meta = cdSqlExtractMeta(preamble);
+
+    const nextStart = i + 1 < starts.length ? starts[i + 1] : sql.length;
+    const stmtSlice = sql.slice(startIdx, nextStart);
+    try {
+      const def = cdSqlParseCreateTable(stmtSlice, meta);
+      if (def && def.name) results.push(def);
+    } catch (e) { /* skip malformed statement, keep parsing the rest */ }
+  });
+  return results;
+}
+
+function cdSqlExample(){
+  return `-- module: Mentorship
+-- icon: calendar-clock
+-- desc: One row per 1:1 mentor/student session
+CREATE TABLE mentorship_sessions (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  mentor_id BIGINT UNSIGNED NOT NULL,
+  student_id BIGINT UNSIGNED NOT NULL,
+  scheduled_at DATETIME NOT NULL,
+  notes TEXT NULL,
+  PRIMARY KEY (id),
+  FOREIGN KEY (mentor_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE RESTRICT,
+  FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE RESTRICT
+) COMMENT='Mentorship sessions';`;
+}
+
+function cdRenderSqlTab(){
+  const panel = document.getElementById("cdPanelSql");
+  panel.innerHTML = `
+    <p class="cd-hint">
+      الصق كود SQL عادي (CREATE TABLE) أو حمّل ملف .sql — تقدر تحط أكتر من جدول مع بعض.
+      لو الجدول بيرتبط بجدول موجود في السكيما (زي users)، اكتب REFERENCES عادي والعلاقة هتترسم تلقائي.
+      اختياري: حط تعليق فوق كل جدول <code>-- module: ...</code> / <code>-- icon: ...</code> / <code>-- desc: ...</code> للتحكم في الموديول والأيقونة والوصف.
+    </p>
+    <details class="cd-example">
+      <summary>Show example</summary>
+      <pre>${cdSqlExample()}</pre>
+    </details>
+    <textarea id="cdSqlInput" class="cd-json-input" placeholder="CREATE TABLE ... ( ... );" spellcheck="false"></textarea>
+    <div class="cd-form-actions">
+      <span class="cd-form-error" id="cdSqlError"></span>
+      <button class="btn ghost sm" id="cdSqlFilePick">Load from .sql file</button>
+      <input type="file" id="cdSqlFile" accept=".sql,text/plain" style="display:none;" />
+      <button class="btn primary" id="cdSqlSubmit">Import</button>
+    </div>
+  `;
+  document.getElementById("cdSqlSubmit").onclick = cdSubmitSql;
+  document.getElementById("cdSqlFilePick").onclick = () => document.getElementById("cdSqlFile").click();
+  document.getElementById("cdSqlFile").onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { document.getElementById("cdSqlInput").value = reader.result; };
+    reader.readAsText(file);
+  };
+}
+function cdSubmitSql(){
+  const errEl = document.getElementById("cdSqlError");
+  errEl.textContent = "";
+  const raw = document.getElementById("cdSqlInput").value.trim();
+  if (!raw){ errEl.textContent = "الصق أو حمّل كود SQL الأول."; return; }
+
+  let defs;
+  try { defs = cdParseSqlToDefs(raw); }
+  catch (e) { errEl.textContent = "SQL parse error: " + e.message; return; }
+
+  if (!defs.length){ errEl.textContent = "مفيش أي CREATE TABLE مفهوم في الكود ده."; return; }
+
+  const result = upsertCustomTables(defs);
+  if (!result.ok){ errEl.textContent = result.errors.join(" · "); return; }
+  if (result.errors.length) toast(`اتضاف ${result.added.length} جدول، اتجاهل ${result.errors.length}: ${result.errors.join(" · ")}`);
+  else toast(`اتضاف ${result.added.length} جدول من SQL: ${result.added.join(", ")}`);
+  result.warnings.forEach(w => toast(w));
+  cdCloseModal();
+}
+
+/* ---------- Tab 4: manage ---------- */
 function cdRenderManageTab(){
   const panel = document.getElementById("cdPanelManage");
   document.getElementById("cdManageCount").textContent = customTables.length ? `(${customTables.length})` : "";
