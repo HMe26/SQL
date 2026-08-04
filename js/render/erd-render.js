@@ -14,8 +14,9 @@ function el(tag, attrs, parent){
 function buildCardHTML(name){
   const t = SCHEMA.tables[name];
   const mod = t.module;
-  const visCols = t.columns.slice(0, MAX_VISIBLE_COLS);
-  const moreCount = t.columns.length - visCols.length;
+  const isExpanded = !!state.expanded[name];
+  const visCols = isExpanded ? t.columns : t.columns.slice(0, MAX_VISIBLE_COLS);
+  const hiddenCount = t.columns.length - Math.min(t.columns.length, MAX_VISIBLE_COLS);
 
   const rowsHtml = visCols.map(c => {
     const isPk = t.pk.includes(c.name);
@@ -41,7 +42,7 @@ function buildCardHTML(name){
       ${t.description ? `<div class="tc-desc">${t.description}</div>` : ""}
       <div class="tc-cols">
         ${rowsHtml}
-        ${moreCount > 0 ? `<div class="tc-more">+ ${moreCount} more column${moreCount>1?"s":""}</div>` : ""}
+        ${hiddenCount > 0 ? `<div class="tc-more tc-toggle" data-toggle="${name}" role="button" tabindex="0" aria-expanded="${isExpanded}">${isExpanded ? `${svgIcon("chevron-up",10)} Show less` : `${svgIcon("chevron-down",10)} + ${hiddenCount} more column${hiddenCount>1?"s":""}`}</div>` : ""}
       </div>
       <div class="tc-foot">
         <span>${svgIcon("key",10)} <b>${t.pk.length}</b> PK</span>
@@ -141,6 +142,13 @@ function renderAll(){
   updateStatsUI();
   renderMinimap();
   if (state.focusMode && state.selected) applyFocusMode();
+}
+
+// ---- accordion: expand/collapse a card's full column list ----
+function toggleCardExpand(name){
+  state.expanded[name] = !state.expanded[name];
+  computeLayout();   // card height changed -> re-flow all cards so nothing overlaps
+  renderAll();        // rebuild svg (pan/zoom + expanded state are preserved via `state`)
 }
 
 function anchorPoint(name, side){

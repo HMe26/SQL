@@ -79,6 +79,8 @@ const ICON_PATHS = {
   "target": ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z","M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z","M12 12.9a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z"],
   "copy": ["M8 8h11v11H8z","M5 5h11v3H8v8H5z"],
   "layers": ["M12 3 3 8l9 5 9-5-9-5Z","M3 13l9 5 9-5","M3 18l9 5 9-5"],
+  "chevron-down": ["M5 8.5 12 15.5 19 8.5"],
+  "chevron-up": ["M5 15.5 12 8.5 19 15.5"],
 };
 
 function svgIcon(name, size){
@@ -136,6 +138,7 @@ const state = {
   mapPanY: 60,
   mapInitialized: false,
   edgeRouting: (localStorage.getItem("edgeRouting") || "curved"), // "curved" | "straight" | "orthogonal"
+  expanded: {},           // table name -> bool (accordion expand/collapse of full column list)
 };
 
 SCHEMA.modules.forEach(m => state.moduleEnabled[m] = true);

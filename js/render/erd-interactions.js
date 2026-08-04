@@ -8,6 +8,7 @@ function attachCardEvents(name, g){
   g.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return;
     e.stopPropagation();
+    if (e.target.closest(".tc-toggle")){ toggleCardExpand(name); return; }
     const p = state.positions[name];
     dragState = {
       startX: e.clientX, startY: e.clientY,
@@ -56,6 +57,7 @@ function attachCardEvents(name, g){
   g.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " "){
       e.preventDefault();
+      if (e.target.closest && e.target.closest(".tc-toggle")){ toggleCardExpand(name); return; }
       openDetails(name);
     }
   });
@@ -197,6 +199,15 @@ canvasWrap.addEventListener("touchstart", (e) => {
   if (e.touches.length === 1){
     const touch = e.touches[0];
     touchState = { mode: "pan", x: touch.clientX - state.panX, y: touch.clientY - state.panY, startX: touch.clientX, startY: touch.clientY };
+
+    // tap on the expand/collapse toggle: handle immediately, skip pan/long-press/details
+    const targetToggle = e.target.closest(".tc-toggle");
+    if (targetToggle){
+      const tname = e.target.closest(".table-card").dataset.table;
+      touchState = null;
+      toggleCardExpand(tname);
+      return;
+    }
 
     // long-press: open details for the table under the finger
     const targetCard = e.target.closest(".table-card");

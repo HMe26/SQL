@@ -154,6 +154,13 @@ html[data-theme="light"] .table-card:hover{
   padding:0 4px; border-radius:6px; margin-left:6px; flex-shrink:0;
 }
 .tc-more{ height:22px; box-sizing:border-box; padding:0 12px; display:flex; align-items:center; font-size:10px; color:var(--text-2); font-style:italic; }
+.tc-toggle{
+  cursor:pointer; font-style:normal; font-weight:600; gap:5px;
+  color:var(--mod-color, var(--accent)); border-top:1px dashed var(--panel-border);
+  transition:background 0.12s;
+}
+.tc-toggle svg{ width:10px; height:10px; flex-shrink:0; stroke:currentColor; }
+.tc-toggle:hover, .tc-toggle:focus-visible{ background:var(--mod-color-soft, rgba(124,157,255,0.14)); outline:none; }
 
 .tc-foot{
   display:flex; align-items:center; gap:10px; height:34px; box-sizing:border-box; padding:0 12px; border-top:1px solid var(--panel-border);

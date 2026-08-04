@@ -33,10 +33,13 @@ const TC_CARD_BORDER = 2; // .table-card 1px top + 1px bottom border
 
 function cardHeight(table){
   const t = SCHEMA.tables[table];
-  const visCols = Math.min(t.columns.length, MAX_VISIBLE_COLS);
+  const isExpanded = !!state.expanded[table];
+  const visCols = isExpanded ? t.columns.length : Math.min(t.columns.length, MAX_VISIBLE_COLS);
   let h = TC_HEAD_H;
   if (t.description) h += TC_DESC_H;
   h += TC_COLS_PAD + visCols * TC_ROW_H;
+  // toggle row: "+ N more columns" when collapsed, "Show less" when expanded
+  // (only shown at all when there's something to collapse, i.e. more than MAX_VISIBLE_COLS)
   if (t.columns.length > MAX_VISIBLE_COLS) h += TC_MORE_H;
   h += TC_FOOT_H + TC_CARD_BORDER;
   return h;
