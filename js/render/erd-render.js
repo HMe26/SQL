@@ -149,6 +149,35 @@ function toggleCardExpand(name){
   state.expanded[name] = !state.expanded[name];
   computeLayout();   // card height changed -> re-flow all cards so nothing overlaps
   renderAll();        // rebuild svg (pan/zoom + expanded state are preserved via `state`)
+  updateExpandAllButton();
+}
+
+// ---- accordion: expand/collapse EVERY card at once ----
+function tablesWithHiddenColumns(){
+  return SCHEMA.order.filter(n => SCHEMA.tables[n].columns.length > MAX_VISIBLE_COLS);
+}
+function allCardsExpanded(){
+  const list = tablesWithHiddenColumns();
+  return list.length > 0 && list.every(n => state.expanded[n]);
+}
+function toggleExpandAll(){
+  const list = tablesWithHiddenColumns();
+  if (!list.length){ toast("No table has extra columns to expand"); return; }
+  const expand = !allCardsExpanded();
+  list.forEach(n => { state.expanded[n] = expand; });
+  computeLayout();
+  renderAll();
+  updateExpandAllButton();
+  toast(expand ? `Expanded all columns (${list.length} tables)` : "Collapsed all columns");
+}
+function updateExpandAllButton(){
+  const btn = document.getElementById("btnExpandAll");
+  if (!btn) return;
+  const expanded = allCardsExpanded();
+  btn.setAttribute("aria-pressed", String(expanded));
+  btn.classList.toggle("active", expanded);
+  const label = document.getElementById("btnExpandAllLabel");
+  if (label) label.textContent = expanded ? "Collapse All" : "Expand All";
 }
 
 function anchorPoint(name, side){

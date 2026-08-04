@@ -10,6 +10,7 @@ document.addEventListener("keydown", (e) => {
   if (k === "f"){ e.preventDefault(); const si = document.getElementById("searchInput"); si.focus(); si.select(); return; }
   if (k === "g"){ e.preventDefault(); cycleSearchMatch(); return; }
   if (k === "l"){ e.preventDefault(); document.getElementById("btnAutoLayout").click(); return; }
+  if (k === "e" && e.shiftKey){ e.preventDefault(); document.getElementById("btnExpandAll").click(); return; }
   if (k === "e"){ e.preventDefault(); document.getElementById("exportMenu").classList.toggle("open"); return; }
   if (k === "d"){ e.preventDefault(); setTheme(isLightTheme() ? "dark" : "light"); return; }
   if (k === "m"){ e.preventDefault(); switchView(state.view === "erd" ? "mapping" : "erd"); return; }
@@ -41,6 +42,9 @@ document.getElementById("btnAutoLayout").onclick = () => {
   fitView();
   toast("Layout reset");
 };
+
+document.getElementById("btnExpandAll").onclick = () => toggleExpandAll();
+updateExpandAllButton();
 
 /* ---- relationship routing style switch ---- */
 function applyRoutingButtonState(){

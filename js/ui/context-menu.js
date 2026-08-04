@@ -39,6 +39,9 @@ canvasWrap.addEventListener("contextmenu", (e) => {
       { label: "Open details", icon: "file-text", action: () => openDetails(name) },
       { label: "Focus this table", icon: "target", action: () => { openDetails(name); toggleFocusMode(true); } },
       { sep: true },
+      ...(SCHEMA.tables[name].columns.length > MAX_VISIBLE_COLS ? [
+        { label: state.expanded[name] ? "Collapse columns" : "Expand all columns", icon: "layers", action: () => toggleCardExpand(name) },
+      ] : []),
       { label: "Copy table name", icon: "copy", action: () => { navigator.clipboard.writeText(name); toast("Table name copied"); } },
       { label: "Copy CREATE TABLE SQL", icon: "copy", action: () => { navigator.clipboard.writeText(buildCreateTableSQL(name)); toast("SQL copied"); } },
       { sep: true },
@@ -48,6 +51,7 @@ canvasWrap.addEventListener("contextmenu", (e) => {
     showContextMenu([
       { label: "Fit to screen", icon: "layout-grid", action: () => fitView() },
       { label: "Re-run auto layout", icon: "layout-dashboard", action: () => document.getElementById("btnAutoLayout").click() },
+      { label: (typeof allCardsExpanded === "function" && allCardsExpanded()) ? "Collapse all columns" : "Expand all columns", icon: "layers", action: () => document.getElementById("btnExpandAll").click() },
       { sep: true },
       { label: "Reset filters", icon: "filter", action: () => document.querySelector('[data-quick="reset"]').click() },
       { label: "Open command palette", icon: "terminal", action: () => openCommandPalette() },

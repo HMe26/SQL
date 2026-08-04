@@ -360,6 +360,7 @@ function switchView(view){
   document.getElementById("tabViewMapping").classList.toggle("active", view === "mapping");
   document.querySelector(".search-wrap").style.visibility = view === "erd" ? "" : "hidden";
   document.getElementById("btnFocusMode").style.visibility = view === "erd" ? "" : "hidden";
+  document.getElementById("btnExpandAll").style.visibility = view === "erd" ? "" : "hidden";
 
   if (view === "mapping"){
     if (!state.mapInitialized){

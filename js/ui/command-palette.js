@@ -14,6 +14,7 @@ function cpActionCommands(){
   return [
     { group: "Actions", icon: "layout-grid", label: "Fit to screen", sub: "", action: () => (state.view === "mapping" ? fitMapView() : fitView()) },
     { group: "Actions", icon: "layout-dashboard", label: "Re-run auto layout", sub: "Ctrl+L", action: () => document.getElementById("btnAutoLayout").click() },
+    { group: "Actions", icon: "layers", label: (typeof allCardsExpanded === "function" && allCardsExpanded()) ? "Collapse all columns" : "Expand all columns", sub: "Ctrl+Shift+E", action: () => document.getElementById("btnExpandAll").click() },
     { group: "Actions", icon: state.view === "erd" ? "layers" : "table-2", label: state.view === "erd" ? "Switch to Mapping view" : "Switch to ERD view", sub: "Ctrl+M", action: () => switchView(state.view === "erd" ? "mapping" : "erd") },
     { group: "Actions", icon: "target", label: state.focusMode ? "Turn off Focus Mode" : "Turn on Focus Mode", sub: "Ctrl+Shift+F", action: () => toggleFocusMode() },
     { group: "Actions", icon: isLightTheme() ? "moon" : "sun", label: isLightTheme() ? "Switch to Dark theme" : "Switch to Light theme", sub: "Ctrl+D", action: () => setTheme(isLightTheme() ? "dark" : "light") },
