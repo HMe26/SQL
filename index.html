@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="css/context-menu.css" />
 <link rel="stylesheet" href="css/command-palette.css" />
 <link rel="stylesheet" href="css/custom-data.css" />
+<link rel="stylesheet" href="css/auto-grouping.css" />
 </head>
 <body>
 
@@ -214,6 +215,17 @@
       <div class="panel-resize-handle" id="mapMinimapResizeHandle"></div>
     </div>
 
+    <!-- auto-detected modules (real Louvain community detection over the FK graph) -->
+    <div id="autoGroupPanel" class="floating-panel">
+      <div class="floating-header">
+        <span>Auto-Detected Modules (Louvain)</span>
+        <button class="icon-btn" id="autoGroupToggle" aria-label="Collapse or expand auto-grouping panel">+</button>
+      </div>
+      <div class="auto-group-body" id="autoGroupBody" style="display:none;">
+        <button class="btn ghost" id="autoGroupRun" style="width:100%;justify-content:center;margin-bottom:10px;">Run analysis</button>
+      </div>
+    </div>
+
     <div id="mapZoomControls">
       <button id="mapZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
       <span id="mapZoomLevel">100%</span>
@@ -268,6 +280,7 @@
       <button class="tab" data-tab="columns">Columns</button>
       <button class="tab" data-tab="relations">Relations</button>
       <button class="tab" data-tab="sql">SQL</button>
+      <button class="tab" data-tab="sample">Sample Data</button>
     </div>
 
     <div class="details-body">
@@ -275,6 +288,7 @@
       <div class="tab-panel" id="tab-columns"></div>
       <div class="tab-panel" id="tab-relations"></div>
       <div class="tab-panel" id="tab-sql"></div>
+      <div class="tab-panel" id="tab-sample"></div>
     </div>
   </aside>
 
@@ -299,6 +313,7 @@
 
 <!-- ===== Data: schema metadata, then tables grouped by module ===== -->
 <script src="js/data/schema-meta.js"></script>
+<script src="js/data/sample-data-generator.js"></script>
 <script src="js/data/tables/auth.js"></script>
 <script src="js/data/tables/people.js"></script>
 <script src="js/data/tables/projects.js"></script>
@@ -319,6 +334,7 @@
 <script src="js/render/mapping-view.js"></script>
 <script src="js/render/deps-view.js"></script>
 <script src="js/features/details-panel.js"></script>
+<script src="js/features/auto-grouping.js"></script>
 <script src="js/features/legend.js"></script>
 <script src="js/features/export.js"></script>
 <script src="js/core/theme.js"></script>

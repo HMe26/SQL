@@ -110,6 +110,9 @@ function openDetails(name){
     }
   };
 
+  // sample data tab
+  document.getElementById("tab-sample").innerHTML = buildSampleDataHTML(name);
+
   if (state.focusMode) applyFocusMode();
 
   detailsPanel.classList.add("open");
