@@ -3,6 +3,19 @@
    Vanilla JS. No frameworks. Consumes SCHEMA from schema-data.js
    ============================================================ */
 
+// ---------- Early theme detection (avoids flash of wrong theme) ----------
+(function initEarlyTheme(){
+  try {
+    const saved = localStorage.getItem("uip-theme");
+    const theme = (saved === "light" || saved === "dark")
+      ? saved
+      : ((window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+})();
+
 // ---------- Icon library (minimal hand-drawn stroke icons) ----------
 const ICON_PATHS = {
   "user": ["M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z","M4 20c1.2-3.6 4-5.5 8-5.5s6.8 1.9 8 5.5"],
@@ -61,6 +74,8 @@ const ICON_PATHS = {
   "database": ["M12 5c4.4 0 8-1.1 8-2.5S16.4 0 12 0 4 1.1 4 2.5 7.6 5 12 5Z","M4 2.5V19c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V2.5","M4 10.8c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"],
   "table-2": ["M3 4h18v16H3z","M3 10h18M9 4v16"],
   "circle-dashed": ["M12 3a9 9 0 1 0 9 9"],
+  "sun": ["M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4 4.2 19.8M19.8 4.2l-1.4 1.4","M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"],
+  "moon": ["M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"],
 };
 
 function svgIcon(name, size){
@@ -70,17 +85,28 @@ function svgIcon(name, size){
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 }
 
-// ---------- Module color helpers ----------
-function hue(mod){ return (SCHEMA.moduleColors[mod] && SCHEMA.moduleColors[mod].h) || 220; }
-function modColor(mod, alpha){ return `hsla(${hue(mod)}, 90%, 68%, ${alpha==null?1:alpha})`; }
-function modColorSoft(mod){ return `hsla(${hue(mod)}, 85%, 60%, 0.16)`; }
+// ---------- Theme ----------
+const THEME_KEY = "uip-theme";
+function isLightTheme(){ return document.documentElement.getAttribute("data-theme") === "light"; }
 
-// relationship type colors
-const REL_COLORS = {
-  "1:1": "#8ffcd6",
-  "N:1": "#7c9dff",
-  "N:M": "#ffb454"
-};
+// ---------- Module color helpers (theme-aware) ----------
+function hue(mod){ return (SCHEMA.moduleColors[mod] && SCHEMA.moduleColors[mod].h) || 220; }
+function modColor(mod, alpha){
+  const h = hue(mod);
+  if (isLightTheme()) return `hsla(${h}, 72%, 40%, ${alpha==null?1:alpha})`;
+  return `hsla(${h}, 90%, 68%, ${alpha==null?1:alpha})`;
+}
+function modColorSoft(mod){
+  const h = hue(mod);
+  if (isLightTheme()) return `hsla(${h}, 75%, 55%, 0.16)`;
+  return `hsla(${h}, 85%, 60%, 0.16)`;
+}
+
+// relationship type colors (theme-aware)
+const REL_COLORS_DARK  = { "1:1": "#8ffcd6", "N:1": "#7c9dff", "N:M": "#ffb454" };
+const REL_COLORS_LIGHT = { "1:1": "#0f9d68", "N:1": "#3b63f0", "N:M": "#c9720a" };
+const REL_COLORS = REL_COLORS_DARK; // kept for the set of relationship types (legend iteration)
+function relColor(type){ return (isLightTheme() ? REL_COLORS_LIGHT : REL_COLORS_DARK)[type]; }
 
 // ---------- Global state ----------
 const state = {
@@ -233,8 +259,8 @@ function buildCardHTML(name){
     const isPk = t.pk.includes(c.name);
     const fk = t.fks.find(f => f.column === c.name);
     let icoHtml, cls = "tc-col";
-    if (isPk){ icoHtml = `<span class="ico" style="color:#ffd76a">${svgIcon("key",11)}</span>`; cls += " is-pk"; }
-    else if (fk){ icoHtml = `<span class="ico" style="color:#7fd0ff">${svgIcon("link",11)}</span>`; cls += " is-fk"; }
+    if (isPk){ icoHtml = `<span class="ico" style="color:var(--pk-color)">${svgIcon("key",11)}</span>`; cls += " is-pk"; }
+    else if (fk){ icoHtml = `<span class="ico" style="color:var(--fk-color)">${svgIcon("link",11)}</span>`; cls += " is-fk"; }
     else { icoHtml = `<span class="ico" style="color:var(--text-2)">${svgIcon("circle-dashed",10)}</span>`; }
     if (c.nullable && !isPk) cls += " nullable";
     return `<div class="${cls}">${icoHtml}<span class="cname">${c.name}</span><span class="ctype">${c.type}</span>${c.nullable && !isPk ? '<span class="badge-null">NULL</span>' : ''}</div>`;
@@ -283,11 +309,16 @@ function renderAll(){
       x: b.x, y: b.y, width: b.w, height: b.h, rx: 20,
       class: "group-box"
     }, g);
-    rect.style.setProperty("--group-fill", `hsla(${hue(mod)},85%,60%,0.05)`);
-    rect.style.setProperty("--group-stroke", `hsla(${hue(mod)},85%,65%,0.4)`);
+    if (isLightTheme()){
+      rect.style.setProperty("--group-fill", `hsla(${hue(mod)},70%,50%,0.06)`);
+      rect.style.setProperty("--group-stroke", `hsla(${hue(mod)},60%,42%,0.35)`);
+    } else {
+      rect.style.setProperty("--group-fill", `hsla(${hue(mod)},85%,60%,0.05)`);
+      rect.style.setProperty("--group-stroke", `hsla(${hue(mod)},85%,65%,0.4)`);
+    }
     const count = SCHEMA.order.filter(n => SCHEMA.tables[n].module === mod).length;
     const label = el("text", { x: b.x + 22, y: b.y + 24, class: "group-label" }, g);
-    label.style.setProperty("--group-stroke", `hsl(${hue(mod)},90%,72%)`);
+    label.style.setProperty("--group-stroke", isLightTheme() ? `hsl(${hue(mod)},65%,38%)` : `hsl(${hue(mod)},90%,72%)`);
     label.textContent = mod;
     const cnt = el("text", { x: b.x + b.w - 18, y: b.y + 24, class: "group-count", "text-anchor":"end" }, g);
     cnt.textContent = count + " tables";
@@ -310,7 +341,7 @@ function renderAll(){
     t.fks.forEach(fk => {
       if (!SCHEMA.tables[fk.ref_table]) return;
       const type = relType(name, fk);
-      const color = REL_COLORS[type];
+      const color = relColor(type);
       const pathBg = el("path", { class: "rel-path", stroke: color }, layerEdges);
       const flow   = el("path", { class: "rel-path rel-flow", stroke: color }, layerEdges);
       const labelBg = el("rect", { class: "rel-label-bg", rx: 5 }, layerEdges);
@@ -643,7 +674,7 @@ function renderModuleFilters(){
   SCHEMA.modules.forEach(mod => {
     const count = SCHEMA.order.filter(n => SCHEMA.tables[n].module === mod).length;
     const row = document.createElement("div");
-    row.className = "mod-filter";
+    row.className = "mod-filter" + (state.moduleEnabled[mod] ? "" : " disabled");
     row.innerHTML = `<span class="dot" style="background:${modColor(mod)};color:${modColor(mod)}"></span><span class="name">${mod}</span><span class="count">${count}</span>`;
     row.onclick = () => {
       state.moduleEnabled[mod] = !state.moduleEnabled[mod];
@@ -883,13 +914,13 @@ document.querySelectorAll(".details-tabs .tab").forEach(tab => {
    ============================================================ */
 function renderLegend(){
   const body = document.getElementById("legendBody");
-  let html = `<div class="legend-row"><span class="ico" style="color:#ffd76a">${svgIcon("key",13)}</span> Primary key</div>
-              <div class="legend-row"><span class="ico" style="color:#7fd0ff">${svgIcon("link",13)}</span> Foreign key</div>
+  let html = `<div class="legend-row"><span class="ico" style="color:var(--pk-color)">${svgIcon("key",13)}</span> Primary key</div>
+              <div class="legend-row"><span class="ico" style="color:var(--fk-color)">${svgIcon("link",13)}</span> Foreign key</div>
               <div class="legend-row"><span class="ico">${svgIcon("circle-dashed",12)}</span> Regular column</div>
               <div class="legend-row"><span class="badge-null" style="margin-left:0;">NULL</span> Nullable</div>
               <div style="height:1px;background:var(--panel-border);margin:2px 0;"></div>`;
-  Object.entries(REL_COLORS).forEach(([type,color]) => {
-    html += `<div class="legend-row"><span class="legend-line" style="border-color:${color}"></span> ${type} relationship</div>`;
+  Object.keys(REL_COLORS).forEach(type => {
+    html += `<div class="legend-row"><span class="legend-line" style="border-color:${relColor(type)}"></span> ${type} relationship</div>`;
   });
   html += `<div style="height:1px;background:var(--panel-border);margin:2px 0;"></div>`;
   SCHEMA.modules.forEach(mod => {
@@ -917,18 +948,20 @@ function toast(msg){
 }
 
 function buildExportSVG(){
+  const light = isLightTheme();
+  const bgColor = light ? "#f5f6fb" : "#07080d";
   const bounds = contentBounds();
   const clone = svgEl.cloneNode(true);
   clone.setAttribute("width", bounds.w);
   clone.setAttribute("height", bounds.h);
   clone.setAttribute("viewBox", `0 0 ${bounds.w} ${bounds.h}`);
-  clone.style.background = "#07080d";
+  clone.style.background = bgColor;
 
   // inline a background rect
   const bg = document.createElementNS(svgNS, "rect");
   bg.setAttribute("x", 0); bg.setAttribute("y", 0);
   bg.setAttribute("width", bounds.w); bg.setAttribute("height", bounds.h);
-  bg.setAttribute("fill", "#07080d");
+  bg.setAttribute("fill", bgColor);
   clone.insertBefore(bg, clone.firstChild);
 
   // foreignObject HTML needs xmlns to render standalone
@@ -940,9 +973,27 @@ function buildExportSVG(){
   clone.querySelectorAll('[style*="display: none"], [style*="display:none"]').forEach(n => n.remove());
 
   const styleTag = document.createElementNS(svgNS, "style");
-  styleTag.textContent = document.querySelector('link[href="style.css"]') ? "" : "";
-  // Inline minimal CSS needed for card rendering in the exported file
-  styleTag.textContent = `
+  // Inline minimal CSS needed for card rendering in the exported (standalone) file —
+  // it can't rely on style.css, so theme colors are duplicated here literally.
+  styleTag.textContent = light ? `
+    * { box-sizing: border-box; font-family: 'JetBrains Mono', monospace; }
+    .table-card{ border-radius:16px; background:linear-gradient(180deg,#ffffff,#f8f9fc); border:1px solid rgba(15,23,42,0.1); overflow:hidden; }
+    .tc-head{ display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid rgba(15,23,42,0.08); }
+    .tc-icon{ width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:var(--mod-color-soft);color:var(--mod-color); }
+    .tc-titles{ flex:1; min-width:0; }
+    .tc-name{ font-size:12.5px; font-weight:700; color:#1a1d29; font-family:'JetBrains Mono',monospace; }
+    .tc-module{ font-size:9.5px; color:var(--mod-color); text-transform:uppercase; }
+    .tc-colcount{ font-size:10px; color:#6b7189; background:rgba(15,23,42,0.06); padding:2px 6px; border-radius:20px; }
+    .tc-desc{ font-size:10.5px; color:#6b7189; padding:7px 12px 0; }
+    .tc-cols{ padding:6px 0 8px; }
+    .tc-col{ display:flex; gap:6px; padding:3.5px 12px; font-size:11px; font-family:'JetBrains Mono',monospace; color:#1a1d29; }
+    .tc-col .ctype{ color:#6b7189; font-size:9.5px; margin-left:auto; }
+    .tc-col.is-pk .cname{ color:#b8860a; }
+    .tc-col.is-fk .cname{ color:#1f7bbf; }
+    .tc-more{ padding:5px 12px; font-size:10px; color:#6b7189; font-style:italic; }
+    .tc-foot{ display:flex; gap:10px; padding:8px 12px; border-top:1px solid rgba(15,23,42,0.08); font-size:9.5px; color:#6b7189; }
+    .group-label{ font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600; }
+  ` : `
     * { box-sizing: border-box; font-family: 'JetBrains Mono', monospace; }
     .table-card{ border-radius:16px; background:linear-gradient(180deg,#1a1d2c,#10121c); border:1px solid rgba(255,255,255,0.08); overflow:hidden; }
     .tc-head{ display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); }
@@ -995,7 +1046,7 @@ function exportPNG(){
     canvas.width = bounds.w * scale;
     canvas.height = bounds.h * scale;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#07080d";
+    ctx.fillStyle = isLightTheme() ? "#f5f6fb" : "#07080d";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(scale, scale);
     ctx.drawImage(img, 0, 0, bounds.w, bounds.h);
@@ -1046,6 +1097,56 @@ document.querySelectorAll("#exportMenu button").forEach(btn => {
   };
 });
 
+/* ============================================================
+   THEME TOGGLE
+   ============================================================ */
+function applyThemeIcon(){
+  const icon = document.getElementById("themeIcon");
+  if (icon) icon.innerHTML = svgIcon(isLightTheme() ? "moon" : "sun", 15);
+}
+
+function refreshThemedUI(){
+  // module colors / rel colors / group tints depend on theme — rebuild in the
+  // right order so filter states (dimmed / disabled) are reapplied correctly.
+  renderTableIndex();
+  renderModuleFilters();
+  renderAll();   // rebuilds cards, groups, edges; also re-runs applyFilters/stats/minimap
+  renderLegend();
+
+  if (state.selected && cardNodes[state.selected]){
+    const cardEl = cardNodes[state.selected].fo.querySelector(".table-card");
+    if (cardEl) cardEl.classList.add("selected");
+    const mod = SCHEMA.tables[state.selected].module;
+    document.getElementById("detailsModule").style.setProperty("--mod-color", modColor(mod));
+    detailsPanel.style.setProperty("--mod-color", modColor(mod));
+  }
+  applyTransform();
+}
+
+function setTheme(theme, opts){
+  opts = opts || {};
+  document.documentElement.setAttribute("data-theme", theme);
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+  applyThemeIcon();
+  if (!opts.silent){
+    refreshThemedUI();
+    toast(theme === "light" ? "Light theme" : "Dark theme");
+  }
+}
+
+document.getElementById("btnThemeToggle").onclick = () => {
+  setTheme(isLightTheme() ? "dark" : "light");
+};
+
+if (window.matchMedia){
+  window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", (e) => {
+    // only auto-follow the OS if the user never explicitly chose a theme
+    let hasExplicitChoice = false;
+    try { hasExplicitChoice = !!localStorage.getItem(THEME_KEY); } catch (err) {}
+    if (!hasExplicitChoice) setTheme(e.matches ? "light" : "dark");
+  });
+}
+
 document.getElementById("btnFitView").onclick = fitView;
 document.getElementById("btnAutoLayout").onclick = () => {
   computeLayout();
@@ -1072,6 +1173,7 @@ document.getElementById("btnAutoLayout").onclick = () => {
    INIT
    ============================================================ */
 function init(){
+  applyThemeIcon();
   svgEl = document.getElementById("canvasSvg");
   viewportEl = document.getElementById("canvasViewport");
   tooltipEl = document.createElement("div");
