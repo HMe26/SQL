@@ -694,6 +694,13 @@ Object.assign(SCHEMA.tables, {
         "nullable": false,
         "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
         "unique": false
+      },
+      {
+        "name": "deadline",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "unique": false
       }
     ],
     "pk": [
@@ -769,7 +776,7 @@ Object.assign(SCHEMA.tables, {
       },
       {
         "name": "value",
-        "type": "VARCHAR(255)",
+        "type": "TEXT",
         "nullable": false,
         "default": null,
         "unique": false
@@ -821,8 +828,8 @@ Object.assign(SCHEMA.tables, {
     "module": "Security & Audit",
     "icon": "file-lock"
   },
-  "risk_scores": {
-    "name": "risk_scores",
+  "security_alerts": {
+    "name": "security_alerts",
     "columns": [
       {
         "name": "id",
@@ -832,42 +839,331 @@ Object.assign(SCHEMA.tables, {
         "unique": false
       },
       {
-        "name": "entity_type",
-        "type": "ENUM('user','ip')",
+        "name": "type",
+        "type": "ENUM( 'failed_login', 'account_lockout', 'privilege_escalation', 'suspicious_login_location', 'brute_force', 'multiple_session_detection', 'unauthorized_file_access', 'security_policy_violation' )",
         "nullable": false,
         "default": null,
         "unique": false
       },
       {
-        "name": "entity_ref",
-        "type": "VARCHAR(120)",
+        "name": "severity",
+        "type": "ENUM('info','warning','high','critical')",
+        "nullable": false,
+        "default": "'warning'",
+        "unique": false
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(200)",
         "nullable": false,
         "default": null,
         "unique": false
       },
       {
-        "name": "score",
-        "type": "TINYINT UNSIGNED",
-        "nullable": false,
-        "default": "0",
+        "name": "message",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
         "unique": false
       },
       {
-        "name": "level",
-        "type": "ENUM('low','medium','high','critical')",
-        "nullable": false,
-        "default": "'low'",
+        "name": "source_ip",
+        "type": "VARCHAR(45)",
+        "nullable": true,
+        "default": null,
         "unique": false
       },
       {
-        "name": "factors",
+        "name": "user_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "status",
+        "type": "ENUM('open','acknowledged','resolved','escalated')",
+        "nullable": false,
+        "default": "'open'",
+        "unique": false
+      },
+      {
+        "name": "assigned_to",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "acknowledged_by",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "acknowledged_at",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "resolved_by",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "resolved_at",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "resolution_note",
+        "type": "VARCHAR(255)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "escalated_by",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "escalated_at",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "escalation_note",
+        "type": "VARCHAR(255)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "meta",
         "type": "JSON",
         "nullable": true,
         "default": null,
         "unique": false
       },
       {
-        "name": "calculated_at",
+        "name": "created_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      },
+      {
+        "name": "updated_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+        "unique": false
+      }
+    ],
+    "pk": [
+      "id"
+    ],
+    "fks": [
+      {
+        "column": "user_id",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "SET NULL",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "assigned_to",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "SET NULL",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "acknowledged_by",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "SET NULL",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "resolved_by",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "SET NULL",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "escalated_by",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "SET NULL",
+        "on_update": "RESTRICT"
+      }
+    ],
+    "indexes": [
+      {
+        "cols": [
+          "status",
+          "severity"
+        ],
+        "fulltext": false
+      },
+      {
+        "cols": [
+          "type"
+        ],
+        "fulltext": false
+      }
+    ],
+    "uniques": [],
+    "description": "Automated or manually-raised security alerts (distinct from full security_incidents) with an assign/acknowledge/resolve/escalate workflow.",
+    "module": "Security & Audit",
+    "icon": "siren"
+  },
+  "incident_evidence": {
+    "name": "incident_evidence",
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "incident_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "uploaded_by",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "original_filename",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "stored_path",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "mime_type",
+        "type": "VARCHAR(100)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "file_size_bytes",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": "0",
+        "unique": false
+      },
+      {
+        "name": "note",
+        "type": "VARCHAR(255)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      }
+    ],
+    "pk": [
+      "id"
+    ],
+    "fks": [
+      {
+        "column": "incident_id",
+        "ref_table": "security_incidents",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "uploaded_by",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "SET NULL",
+        "on_update": "RESTRICT"
+      }
+    ],
+    "indexes": [
+      {
+        "cols": [
+          "incident_id"
+        ],
+        "fulltext": false
+      }
+    ],
+    "uniques": [],
+    "description": "Evidence files (screenshots, logs, exports) attached to a security_incidents record to document what happened.",
+    "module": "Security & Audit",
+    "icon": "file-lock"
+  },
+  "security_report_categories": {
+    "name": "security_report_categories",
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "name_en",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "name_ar",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "slug",
+        "type": "VARCHAR(100)",
+        "nullable": false,
+        "default": null,
+        "unique": true
+      },
+      {
+        "name": "created_at",
         "type": "DATETIME",
         "nullable": false,
         "default": "CURRENT_TIMESTAMP",
@@ -878,22 +1174,353 @@ Object.assign(SCHEMA.tables, {
       "id"
     ],
     "fks": [],
+    "indexes": [],
+    "uniques": [],
+    "description": "Folder-like category taxonomy for organizing security_report_files.",
+    "module": "Security & Audit",
+    "icon": "folder"
+  },
+  "security_report_tags": {
+    "name": "security_report_tags",
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "name",
+        "type": "VARCHAR(60)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "slug",
+        "type": "VARCHAR(60)",
+        "nullable": false,
+        "default": null,
+        "unique": true
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      }
+    ],
+    "pk": [
+      "id"
+    ],
+    "fks": [],
+    "indexes": [],
+    "uniques": [],
+    "description": "Free-form tag vocabulary usable on security_report_files.",
+    "module": "Security & Audit",
+    "icon": "tags"
+  },
+  "security_report_files": {
+    "name": "security_report_files",
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "uploaded_by",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "category_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "title",
+        "type": "VARCHAR(200)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "original_filename",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "file_extension",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "mime_type",
+        "type": "VARCHAR(150)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "file_size_bytes",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": "0",
+        "unique": false
+      },
+      {
+        "name": "storage_path",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "download_count",
+        "type": "INT UNSIGNED",
+        "nullable": false,
+        "default": "0",
+        "unique": false
+      },
+      {
+        "name": "view_count",
+        "type": "INT UNSIGNED",
+        "nullable": false,
+        "default": "0",
+        "unique": false
+      },
+      {
+        "name": "is_archived",
+        "type": "TINYINT(1)",
+        "nullable": false,
+        "default": "0",
+        "unique": false
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      },
+      {
+        "name": "updated_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+        "unique": false
+      }
+    ],
+    "pk": [
+      "id"
+    ],
+    "fks": [
+      {
+        "column": "uploaded_by",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "category_id",
+        "ref_table": "security_report_categories",
+        "ref_column": "id",
+        "on_delete": "SET NULL",
+        "on_update": "RESTRICT"
+      }
+    ],
     "indexes": [
       {
         "cols": [
-          "level"
+          "uploaded_by"
+        ],
+        "fulltext": false
+      },
+      {
+        "cols": [
+          "is_archived"
+        ],
+        "fulltext": false
+      },
+      {
+        "cols": [
+          "category_id"
         ],
         "fulltext": false
       }
     ],
+    "uniques": [],
+    "description": "Uploaded security-team report documents, with view/download counters and archive state.",
+    "module": "Security & Audit",
+    "icon": "file-lock"
+  },
+  "security_report_file_versions": {
+    "name": "security_report_file_versions",
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "security_report_file_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "version_number",
+        "type": "INT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "storage_path",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "original_filename",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "file_extension",
+        "type": "VARCHAR(20)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "file_size_bytes",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": "0",
+        "unique": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "uploaded_by",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      }
+    ],
+    "pk": [
+      "id"
+    ],
+    "fks": [
+      {
+        "column": "security_report_file_id",
+        "ref_table": "security_report_files",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "uploaded_by",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      }
+    ],
+    "indexes": [],
     "uniques": [
       [
-        "entity_type",
-        "entity_ref"
+        "security_report_file_id",
+        "version_number"
       ]
     ],
-    "description": "Computed risk scores (per user or per IP), recalculated by a scheduled job",
+    "description": "Prior uploaded versions of a security report file, kept for history when a newer version is uploaded.",
     "module": "Security & Audit",
-    "icon": "gauge"
+    "icon": "history"
+  },
+  "security_report_file_tags": {
+    "name": "security_report_file_tags",
+    "columns": [
+      {
+        "name": "security_report_file_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "tag_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      }
+    ],
+    "pk": [
+      "security_report_file_id",
+      "tag_id"
+    ],
+    "fks": [
+      {
+        "column": "security_report_file_id",
+        "ref_table": "security_report_files",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "tag_id",
+        "ref_table": "security_report_tags",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      }
+    ],
+    "indexes": [],
+    "uniques": [],
+    "description": "Many-to-many tag assignments linking security_report_files to security_report_tags.",
+    "module": "Security & Audit",
+    "icon": "tags"
   }
 });

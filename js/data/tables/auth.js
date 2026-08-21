@@ -332,6 +332,20 @@ Object.assign(SCHEMA.tables, {
         "nullable": false,
         "default": "CURRENT_TIMESTAMP",
         "unique": false
+      },
+      {
+        "name": "purpose",
+        "type": "ENUM('signup', 'email_change')",
+        "nullable": false,
+        "default": "'signup'",
+        "unique": false
+      },
+      {
+        "name": "new_email",
+        "type": "VARCHAR(190)",
+        "nullable": true,
+        "default": null,
+        "unique": false
       }
     ],
     "pk": [
@@ -523,5 +537,279 @@ Object.assign(SCHEMA.tables, {
     "description": "Per-USER permission overrides on top of whatever their role already grants — e.g. \"this one student should also see the Data Analysis portal\" without creating/changing a role, or \"this one company account shouldn't be able to message students even though Co...",
     "module": "Authentication & Access",
     "icon": "key"
+  },
+  "refresh_tokens": {
+    "name": "refresh_tokens",
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "user_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "token_hash",
+        "type": "CHAR(64)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "device_label",
+        "type": "VARCHAR(150)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "ip_address",
+        "type": "VARCHAR(45)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "expires_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "revoked_at",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "replaced_by_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      }
+    ],
+    "pk": [
+      "id"
+    ],
+    "fks": [
+      {
+        "column": "user_id",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      },
+      {
+        "column": "replaced_by_id",
+        "ref_table": "refresh_tokens",
+        "ref_column": "id",
+        "on_delete": "SET NULL",
+        "on_update": "RESTRICT"
+      }
+    ],
+    "indexes": [
+      {
+        "cols": [
+          "user_id"
+        ],
+        "fulltext": false
+      }
+    ],
+    "uniques": [
+      [
+        "token_hash"
+      ]
+    ],
+    "description": "Long-lived refresh tokens issued alongside JWT access tokens, so a session can renew its access token without forcing the user to log in again.",
+    "module": "Authentication & Access",
+    "icon": "key-round"
+  },
+  "trusted_devices": {
+    "name": "trusted_devices",
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "user_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "selector",
+        "type": "VARCHAR(24)",
+        "nullable": false,
+        "default": null,
+        "unique": true
+      },
+      {
+        "name": "token_hash",
+        "type": "VARCHAR(64)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "device_label",
+        "type": "VARCHAR(120)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "user_agent",
+        "type": "VARCHAR(255)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "ip_address",
+        "type": "VARCHAR(45)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      },
+      {
+        "name": "last_used_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      },
+      {
+        "name": "expires_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "revoked_at",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      }
+    ],
+    "pk": [
+      "id"
+    ],
+    "fks": [
+      {
+        "column": "user_id",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      }
+    ],
+    "indexes": [
+      {
+        "cols": [
+          "user_id",
+          "revoked_at"
+        ],
+        "fulltext": false
+      },
+      {
+        "cols": [
+          "expires_at"
+        ],
+        "fulltext": false
+      }
+    ],
+    "uniques": [],
+    "description": "Devices a user has marked as trusted, remembered by selector/token pair so future logins from the same device can skip extra verification steps.",
+    "module": "Authentication & Access",
+    "icon": "smartphone"
+  },
+  "password_history": {
+    "name": "password_history",
+    "columns": [
+      {
+        "name": "id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "user_id",
+        "type": "BIGINT UNSIGNED",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "password_hash",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "unique": false
+      }
+    ],
+    "pk": [
+      "id"
+    ],
+    "fks": [
+      {
+        "column": "user_id",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      }
+    ],
+    "indexes": [
+      {
+        "cols": [
+          "user_id",
+          "created_at"
+        ],
+        "fulltext": false
+      }
+    ],
+    "uniques": [],
+    "description": "Hashes of a user's previous passwords, kept so the password-change flow can block reuse of a recent password.",
+    "module": "Authentication & Access",
+    "icon": "history"
   }
 });

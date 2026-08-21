@@ -80,8 +80,8 @@ Object.assign(SCHEMA.tables, {
     "module": "Settings & System",
     "icon": "settings"
   },
-  "demo_seed_batches": {
-    "name": "demo_seed_batches",
+  "api_files": {
+    "name": "api_files",
     "columns": [
       {
         "name": "id",
@@ -91,93 +91,72 @@ Object.assign(SCHEMA.tables, {
         "unique": false
       },
       {
-        "name": "batch_id",
-        "type": "CHAR(36)",
+        "name": "uploaded_by",
+        "type": "BIGINT UNSIGNED",
         "nullable": false,
         "default": null,
-        "unique": true
+        "unique": false
       },
       {
-        "name": "label",
-        "type": "VARCHAR(150)",
+        "name": "category",
+        "type": "VARCHAR(50)",
+        "nullable": false,
+        "default": "'general'",
+        "unique": false
+      },
+      {
+        "name": "original_name",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "stored_path",
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "mime_type",
+        "type": "VARCHAR(100)",
         "nullable": true,
         "default": null,
         "unique": false
       },
       {
-        "name": "students_count",
+        "name": "extension",
+        "type": "VARCHAR(20)",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "size_bytes",
+        "type": "BIGINT UNSIGNED",
+        "nullable": true,
+        "default": null,
+        "unique": false
+      },
+      {
+        "name": "download_count",
         "type": "INT UNSIGNED",
         "nullable": false,
         "default": "0",
         "unique": false
       },
       {
-        "name": "status",
-        "type": "ENUM('running','completed','failed','deleted')",
+        "name": "is_deleted",
+        "type": "TINYINT(1)",
         "nullable": false,
-        "default": "'running'",
+        "default": "0",
         "unique": false
       },
       {
-        "name": "started_at",
-        "type": "DATETIME",
-        "nullable": false,
-        "default": "CURRENT_TIMESTAMP",
-        "unique": false
-      },
-      {
-        "name": "finished_at",
+        "name": "deleted_at",
         "type": "DATETIME",
         "nullable": true,
-        "default": null,
-        "unique": false
-      },
-      {
-        "name": "notes",
-        "type": "TEXT",
-        "nullable": true,
-        "default": null,
-        "unique": false
-      }
-    ],
-    "pk": [
-      "id"
-    ],
-    "fks": [],
-    "indexes": [],
-    "uniques": [],
-    "description": "Demo Data Batch Tracking Every run of database/seeders/generate_demo_data.php gets a unique batch_id (UUID). Most inserted rows (students, projects, ai_analysis...) are cleaned up automatically via existing ON DELETE CASCADE from users(id) when the demo use...",
-    "module": "Settings & System",
-    "icon": "database"
-  },
-  "demo_seed_log": {
-    "name": "demo_seed_log",
-    "columns": [
-      {
-        "name": "id",
-        "type": "BIGINT UNSIGNED",
-        "nullable": false,
-        "default": null,
-        "unique": false
-      },
-      {
-        "name": "batch_id",
-        "type": "CHAR(36)",
-        "nullable": false,
-        "default": null,
-        "unique": false
-      },
-      {
-        "name": "table_name",
-        "type": "VARCHAR(64)",
-        "nullable": false,
-        "default": null,
-        "unique": false
-      },
-      {
-        "name": "record_id",
-        "type": "BIGINT UNSIGNED",
-        "nullable": false,
         "default": null,
         "unique": false
       },
@@ -192,19 +171,33 @@ Object.assign(SCHEMA.tables, {
     "pk": [
       "id"
     ],
-    "fks": [],
+    "fks": [
+      {
+        "column": "uploaded_by",
+        "ref_table": "users",
+        "ref_column": "id",
+        "on_delete": "CASCADE",
+        "on_update": "RESTRICT"
+      }
+    ],
     "indexes": [
       {
         "cols": [
-          "batch_id",
-          "table_name"
+          "uploaded_by",
+          "is_deleted"
+        ],
+        "fulltext": false
+      },
+      {
+        "cols": [
+          "category"
         ],
         "fulltext": false
       }
     ],
     "uniques": [],
-    "description": "Demo Seed Log records.",
+    "description": "General-purpose file uploads made through the API layer, with soft-delete support and download tracking.",
     "module": "Settings & System",
-    "icon": "list"
+    "icon": "file"
   }
 });
