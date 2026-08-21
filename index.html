@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>UIP — Database Atlas</title>
 <link rel="stylesheet" href="css/base.css" />
 <link rel="stylesheet" href="css/theme-light.css" />
@@ -19,6 +19,10 @@
 <link rel="stylesheet" href="css/command-palette.css" />
 <link rel="stylesheet" href="css/custom-data.css" />
 <link rel="stylesheet" href="css/auto-grouping.css" />
+<!-- Mobile experience: purpose-built layout for small screens, scoped to
+     body.is-mobile. Loaded last so it can cleanly layer over desktop CSS
+     without touching it. See js/mobile/mobile-app.js. -->
+<link rel="stylesheet" href="css/mobile.css" />
 </head>
 <body>
 
@@ -349,5 +353,11 @@
 <script src="js/ui/panels-resize.js"></script>
 <script src="js/features/custom-data.js"></script>
 <script src="js/main.js"></script>
+
+<!-- Mobile experience: builds the redesigned mobile shell (bottom nav,
+     drawer, Browse view, full-screen details/sheets) on top of the
+     desktop engine above. Never loaded logic is skipped on desktop —
+     everything it builds stays hidden via CSS unless body.is-mobile. -->
+<script src="js/mobile/mobile-app.js"></script>
 </body>
 </html>
