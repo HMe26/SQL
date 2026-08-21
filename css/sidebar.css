@@ -1,8 +1,10 @@
 /* ============ SIDEBAR ============ */
 #sidebar{
   grid-area: side;
-  background:linear-gradient(180deg, rgba(14,16,25,0.85), rgba(10,12,19,0.85));
-  backdrop-filter: blur(18px);
+  background:linear-gradient(180deg, rgba(14,16,25,0.98), rgba(10,12,19,0.98));
+  /* PERF: removed backdrop-filter:blur(18px) — see css/topbar.css for why.
+     The sidebar is always on screen, so a live blur here was a constant,
+     ongoing compositing cost rather than a one-off. */
   border-right:1px solid var(--panel-border);
   display:flex; flex-direction:column;
   overflow-y:auto;

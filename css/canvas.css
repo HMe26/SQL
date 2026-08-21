@@ -23,7 +23,7 @@ html[data-theme="light"] #canvasWrap.snap-grid-active{ --grid-line: rgba(59,99,2
 .canvas-hint{
   position:absolute; left:50%; bottom:14px; transform:translateX(-50%);
   font-size:11px; color:var(--text-2);
-  background:rgba(10,12,19,0.6); backdrop-filter:blur(8px);
+  background:rgba(10,12,19,0.85); /* PERF: removed backdrop-filter:blur(8px), see topbar.css */
   border:1px solid var(--panel-border); padding:6px 14px; border-radius:20px;
   pointer-events:none; transition:opacity .4s;
 }
@@ -57,9 +57,16 @@ html[data-theme="light"] #canvasWrap.snap-grid-active{ --grid-line: rgba(59,99,2
 .table-card{
   position:relative;
   border-radius:16px;
-  background: linear-gradient(180deg, rgba(26,29,44,0.82), rgba(16,18,28,0.86));
+  background: linear-gradient(180deg, rgba(26,29,44,0.97), rgba(16,18,28,0.98));
   border:1px solid var(--panel-border);
-  backdrop-filter: blur(14px);
+  /* PERF: this was backdrop-filter:blur(14px) on EVERY .table-card — with
+     ~163 tables on screen at once that's ~163 separate live blur/composite
+     layers running permanently, which is almost certainly the single
+     biggest cause of the site feeling slow all the time even at rest
+     (not just during pan/zoom/drag). Backdrop-filter is one of the most
+     GPU/CPU-expensive CSS properties, and having ~163 of them stacked is
+     very different from having one on a modal. Removed and compensated
+     with a near-opaque background so the look stays almost the same. */
   box-shadow: 0 14px 34px -16px rgba(0,0,0,0.65);
   overflow:hidden;
   font-family:var(--font-body);

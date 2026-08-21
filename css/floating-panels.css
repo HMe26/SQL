@@ -2,7 +2,9 @@
 .floating-panel{
   position:absolute;
   background:var(--panel);
-  backdrop-filter:blur(20px);
+  /* PERF: removed backdrop-filter:blur(20px) — legend/minimap panels sit on
+     screen permanently, so the blur was a constant compositing cost. See
+     css/topbar.css for details. --panel is already near-opaque. */
   border:1px solid var(--panel-border);
   border-radius:14px;
   box-shadow:var(--shadow-glow);
@@ -56,7 +58,7 @@
 
 #zoomControls, #mapZoomControls{
   position:absolute; right:16px; top:16px;
-  background:var(--panel); backdrop-filter:blur(20px);
+  background:var(--panel);
   border:1px solid var(--panel-border); border-radius:12px;
   display:flex; flex-direction:column; align-items:center;
   z-index:40; overflow:hidden; box-shadow:var(--shadow-glow);

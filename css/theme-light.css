@@ -2,7 +2,7 @@
 html[data-theme="light"]{
   --bg-0:#f5f6fb;
   --bg-1:#ffffff;
-  --panel: rgba(255,255,255,0.78);
+  --panel: rgba(255,255,255,0.95); /* PERF: bumped opacity to compensate for removed backdrop-filter blur (see base.css) */
   --panel-solid:#ffffff;
   --panel-border: rgba(15,23,42,0.09);
   --panel-border-strong: rgba(15,23,42,0.18);

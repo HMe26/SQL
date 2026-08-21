@@ -5,8 +5,14 @@
   align-items:center;
   gap:22px;
   padding:0 20px;
-  background:linear-gradient(180deg, rgba(18,20,31,0.9), rgba(18,20,31,0.72));
-  backdrop-filter: blur(18px);
+  background:linear-gradient(180deg, rgba(18,20,31,0.97), rgba(18,20,31,0.94));
+  /* PERF: was backdrop-filter:blur(18px). The topbar is fixed and visible
+     100% of the time, so a live blur here forces the browser to keep
+     recompositing this whole strip on every repaint anywhere on the page
+     (cursor blink in a focused field, any hover, scrolling, etc.) — a major
+     source of constant background sluggishness even while sitting idle,
+     especially on weaker/integrated GPUs. A near-opaque solid background
+     looks almost identical and costs nothing ongoing. */
   border-bottom:1px solid var(--panel-border);
   z-index:50;
 }

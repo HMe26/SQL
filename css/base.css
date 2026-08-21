@@ -8,7 +8,7 @@
   --bg-0:#07080d;
   --bg-1:#0c0f18;
   --bg-2:#12162200;
-  --panel: rgba(20,23,35,0.62);
+  --panel: rgba(20,23,35,0.94); /* PERF: bumped from 0.62 to compensate for removed backdrop-filter blur on persistent panels (legend/minimap/zoom controls) so they stay readable without the ongoing blur cost */
   --panel-solid:#12141d;
   --panel-border: rgba(255,255,255,0.08);
   --panel-border-strong: rgba(255,255,255,0.16);
